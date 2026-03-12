@@ -89,7 +89,7 @@ func (s *Store) Insert(ctx context.Context, measurement model.Measurement) error
 			upload_jitter_ms,
 			raw
 		) values (
-			$1, nullif($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb
+			$1, nullif($2, '')::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb
 		)
 		on conflict do nothing
 	`,
