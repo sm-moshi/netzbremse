@@ -69,6 +69,26 @@ func (s *Store) EnsureSchema(ctx context.Context) error {
 	if _, err := s.pool.Exec(ctx, schemaSQL); err != nil {
 		return fmt.Errorf("apply schema: %w", err)
 	}
+	if _, err := s.pool.Exec(ctx, `
+		do $$
+		begin
+			if exists (
+				select 1
+				from information_schema.columns
+				where table_schema = 'public'
+					and table_name = 'measurements'
+					and column_name = 'session_id'
+					and udt_name = 'uuid'
+			) then
+				alter table measurements
+					alter column session_id type text
+					using session_id::text;
+			end if;
+		end
+		$$;
+	`); err != nil {
+		return fmt.Errorf("migrate session_id column: %w", err)
+	}
 	return nil
 }
 
@@ -89,7 +109,7 @@ func (s *Store) Insert(ctx context.Context, measurement model.Measurement) error
 			upload_jitter_ms,
 			raw
 		) values (
-			$1, nullif($2, '')::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb
+			$1, nullif($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb
 		)
 		on conflict do nothing
 	`,
@@ -118,7 +138,7 @@ func (s *Store) ListLatest(ctx context.Context, limit int) ([]model.Measurement,
 		select
 			id,
 			measured_at,
-			coalesce(session_id::text, ''),
+			coalesce(session_id, ''),
 			endpoint,
 			success,
 			download_bps,

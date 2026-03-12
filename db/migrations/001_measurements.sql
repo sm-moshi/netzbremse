@@ -1,7 +1,7 @@
 create table if not exists measurements (
     id bigserial primary key,
     measured_at timestamptz not null,
-    session_id uuid,
+    session_id text,
     endpoint text not null,
     success boolean not null,
     download_bps double precision not null default 0,
