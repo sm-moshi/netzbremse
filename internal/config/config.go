@@ -16,6 +16,8 @@ type Measurement struct {
 	ImportDir     string
 	Interval      time.Duration
 	Endpoint      string
+	Command       string
+	Timeout       time.Duration
 }
 
 type Dashboard struct {
@@ -47,7 +49,9 @@ func LoadMeasurement() (Measurement, error) {
 		ListenAddress: envOrDefault("NETZBREMSE_MEASUREMENT_LISTEN_ADDR", ":8081"),
 		ImportDir:     os.Getenv("NETZBREMSE_IMPORT_DIR"),
 		Interval:      interval,
-		Endpoint:      envOrDefault("NETZBREMSE_ENDPOINT", "https://speedtest.m0sh1.cc"),
+		Endpoint:      envOrDefault("NETZBREMSE_ENDPOINT", "https://netzbremse.de/speed"),
+		Command:       envOrDefault("NETZBREMSE_SPEEDTEST_COMMAND", "node /app/netzbremse-browser.mjs"),
+		Timeout:       durationOrDefault("NETZBREMSE_SPEEDTEST_TIMEOUT", 2*time.Minute),
 	}, nil
 }
 
@@ -69,6 +73,16 @@ func LoadDashboard() (Dashboard, error) {
 func envOrDefault(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return fallback
+}
+
+func durationOrDefault(key string, fallback time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		parsed, err := time.ParseDuration(value)
+		if err == nil {
+			return parsed
+		}
 	}
 	return fallback
 }

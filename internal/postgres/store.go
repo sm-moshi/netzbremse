@@ -23,29 +23,31 @@ type Store struct {
 	pool *pgxpool.Pool
 }
 
+type Overview struct {
+	TotalCount      int64     `json:"totalCount"`
+	RecentCount     int64     `json:"recentCount"`
+	SuccessRate     float64   `json:"successRate"`
+	AverageDownload float64   `json:"averageDownload"`
+	AverageUpload   float64   `json:"averageUpload"`
+	AverageLatency  float64   `json:"averageLatency"`
+	LastMeasuredAt  time.Time `json:"lastMeasuredAt"`
+	LastEndpoint    string    `json:"lastEndpoint"`
+}
+
 type speedtestDocument struct {
 	SessionID string `json:"sessionID"`
 	Endpoint  string `json:"endpoint"`
 	Success   bool   `json:"success"`
+	Timestamp string `json:"timestamp"`
 	Result    struct {
-		Download struct {
-			Bandwidth float64 `json:"bandwidth"`
-			Latency   struct {
-				Low float64 `json:"low"`
-				IQM float64 `json:"iqm"`
-			} `json:"latency"`
-		} `json:"download"`
-		Upload struct {
-			Bandwidth float64 `json:"bandwidth"`
-			Latency   struct {
-				Low float64 `json:"low"`
-				IQM float64 `json:"iqm"`
-			} `json:"latency"`
-		} `json:"upload"`
-		Ping struct {
-			Latency float64 `json:"latency"`
-			Jitter  float64 `json:"jitter"`
-		} `json:"ping"`
+		Download        float64 `json:"download"`
+		Upload          float64 `json:"upload"`
+		Latency         float64 `json:"latency"`
+		Jitter          float64 `json:"jitter"`
+		DownloadLatency float64 `json:"downLoadedLatency"`
+		DownloadJitter  float64 `json:"downLoadedJitter"`
+		UploadLatency   float64 `json:"upLoadedLatency"`
+		UploadJitter    float64 `json:"upLoadedJitter"`
 	} `json:"result"`
 }
 
@@ -168,6 +170,45 @@ func (s *Store) ListLatest(ctx context.Context, limit int) ([]model.Measurement,
 	return result, nil
 }
 
+func (s *Store) LoadOverview(ctx context.Context) (Overview, error) {
+	var overview Overview
+	err := s.pool.QueryRow(ctx, `
+		with recent as (
+			select *
+			from measurements
+			where measured_at >= now() - interval '24 hours'
+		),
+		last_row as (
+			select measured_at, endpoint
+			from measurements
+			order by measured_at desc
+			limit 1
+		)
+		select
+			coalesce((select count(*) from measurements), 0) as total_count,
+			coalesce((select count(*) from recent), 0) as recent_count,
+			coalesce((select avg(case when success then 1.0 else 0.0 end) from recent), 0) as success_rate,
+			coalesce((select avg(download_bps) from recent where success), 0) as average_download,
+			coalesce((select avg(upload_bps) from recent where success), 0) as average_upload,
+			coalesce((select avg(latency_ms) from recent where success), 0) as average_latency,
+			coalesce((select measured_at from last_row), to_timestamp(0)) as last_measured_at,
+			coalesce((select endpoint from last_row), '') as last_endpoint
+	`).Scan(
+		&overview.TotalCount,
+		&overview.RecentCount,
+		&overview.SuccessRate,
+		&overview.AverageDownload,
+		&overview.AverageUpload,
+		&overview.AverageLatency,
+		&overview.LastMeasuredAt,
+		&overview.LastEndpoint,
+	)
+	if err != nil {
+		return Overview{}, fmt.Errorf("load overview: %w", err)
+	}
+	return overview, nil
+}
+
 func (s *Store) ImportDir(ctx context.Context, dir string) (int, error) {
 	if dir == "" {
 		return 0, nil
@@ -193,7 +234,7 @@ func (s *Store) ImportDir(ctx context.Context, dir string) (int, error) {
 		if err != nil {
 			return imported, fmt.Errorf("read %q: %w", path, err)
 		}
-		item, err := parseMeasurement(path, payload)
+		item, err := ParseMeasurementFile(path, payload, "")
 		if err != nil {
 			return imported, fmt.Errorf("parse %q: %w", path, err)
 		}
@@ -206,32 +247,52 @@ func (s *Store) ImportDir(ctx context.Context, dir string) (int, error) {
 	return imported, nil
 }
 
-func parseMeasurement(path string, payload []byte) (model.Measurement, error) {
+func ParseMeasurementPayload(payload []byte, fallbackMeasuredAt time.Time, fallbackEndpoint string) (model.Measurement, error) {
 	var doc speedtestDocument
 	if err := json.Unmarshal(payload, &doc); err != nil {
 		return model.Measurement{}, fmt.Errorf("decode json: %w", err)
 	}
 
-	measuredAt, err := parseMeasuredAt(filepath.Base(path))
-	if err != nil {
-		return model.Measurement{}, err
+	measuredAt := fallbackMeasuredAt
+	if doc.Timestamp != "" {
+		parsed, err := time.Parse(time.RFC3339Nano, doc.Timestamp)
+		if err != nil {
+			return model.Measurement{}, fmt.Errorf("parse timestamp: %w", err)
+		}
+		measuredAt = parsed.UTC()
+	}
+	if measuredAt.IsZero() {
+		measuredAt = time.Now().UTC()
+	}
+
+	endpoint := doc.Endpoint
+	if endpoint == "" {
+		endpoint = fallbackEndpoint
 	}
 
 	return model.Measurement{
 		MeasuredAt:        measuredAt,
 		SessionID:         doc.SessionID,
-		Endpoint:          doc.Endpoint,
+		Endpoint:          endpoint,
 		Success:           doc.Success,
-		DownloadBPS:       doc.Result.Download.Bandwidth,
-		UploadBPS:         doc.Result.Upload.Bandwidth,
-		LatencyMS:         doc.Result.Ping.Latency,
-		JitterMS:          doc.Result.Ping.Jitter,
-		DownloadLatencyMS: doc.Result.Download.Latency.Low,
-		DownloadJitterMS:  doc.Result.Download.Latency.IQM,
-		UploadLatencyMS:   doc.Result.Upload.Latency.Low,
-		UploadJitterMS:    doc.Result.Upload.Latency.IQM,
+		DownloadBPS:       doc.Result.Download,
+		UploadBPS:         doc.Result.Upload,
+		LatencyMS:         doc.Result.Latency,
+		JitterMS:          doc.Result.Jitter,
+		DownloadLatencyMS: doc.Result.DownloadLatency,
+		DownloadJitterMS:  doc.Result.DownloadJitter,
+		UploadLatencyMS:   doc.Result.UploadLatency,
+		UploadJitterMS:    doc.Result.UploadJitter,
 		RawJSON:           payload,
 	}, nil
+}
+
+func ParseMeasurementFile(path string, payload []byte, fallbackEndpoint string) (model.Measurement, error) {
+	measuredAt, err := parseMeasuredAt(filepath.Base(path))
+	if err != nil {
+		return model.Measurement{}, err
+	}
+	return ParseMeasurementPayload(payload, measuredAt, fallbackEndpoint)
 }
 
 func parseMeasuredAt(name string) (time.Time, error) {
