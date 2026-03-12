@@ -1,0 +1,12 @@
+when:
+  - event: [push, pull_request]
+
+steps:
+  measurement:
+    image: docker:cli
+    commands:
+      - echo "build contract placeholder for netzbremse measurement image"
+  dashboard:
+    image: docker:cli
+    commands:
+      - echo "build contract placeholder for netzbremse dashboard image"
