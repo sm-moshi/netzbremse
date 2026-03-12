@@ -1,0 +1,86 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":preserveSemverRanges"
+  ],
+  "platformAutomerge": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": true,
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "at any time"
+  ],
+  "prHourlyLimit": 5,
+  "prConcurrentLimit": 3,
+  "enabledManagers": [
+    "gomod",
+    "npm",
+    "dockerfile",
+    "github-actions",
+    "woodpecker",
+    "custom.regex"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "pinDigests": false,
+  "registryAliases": {
+    "harbor.m0sh1.cc/dhi": "dhi.io",
+    "harbor.m0sh1.cc/ghcr": "ghcr.io",
+    "harbor.m0sh1.cc/hub": "docker.io"
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "crane release version in Woodpecker pipeline",
+      "managerFilePatterns": ["/.woodpecker/.+\\.yaml$/"],
+      "matchStrings": [
+        "CRANE_VERSION:\\s*\"(?<currentValue>v[^\"]+)\""
+      ],
+      "depNameTemplate": "google/go-containerregistry",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "DHI image versioning: variant-locked via compatibility group",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^dhi\\.io\\//"],
+      "versioning": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(-(?<compatibility>.+))?$"
+    },
+    {
+      "description": "Node.js: only track even-numbered (LTS) majors",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["dhi.io/node"],
+      "allowedVersions": "/^\\d*[02468]\\./"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "addLabels": ["go"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "addLabels": ["npm"]
+    },
+    {
+      "matchManagers": ["dockerfile", "woodpecker"],
+      "addLabels": ["docker"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["ci"]
+    },
+    {
+      "description": "Group DHI base images across Dockerfiles and Woodpecker pipelines",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^dhi\\.io\\//"],
+      "groupName": "dhi base images"
+    },
+    {
+      "description": "Group semantic-release tooling",
+      "matchPackageNames": ["/semantic-release/"],
+      "groupName": "semantic-release"
+    }
+  ]
+}
