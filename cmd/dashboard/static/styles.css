@@ -42,14 +42,14 @@ table,
 }
 
 .shell {
-  width: min(1120px, calc(100% - 2rem));
+  width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 2rem 0 4rem;
 }
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.8fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.7fr);
   gap: 1.25rem;
   align-items: stretch;
   margin-bottom: 1.25rem;
@@ -80,7 +80,9 @@ table,
   width: 100%;
   border-radius: 0.75rem;
   padding: 1.25rem;
-  background: var(--accent-soft);
+  background:
+    linear-gradient(180deg, rgba(226, 0, 116, 0.08), rgba(5, 150, 105, 0.05)),
+    var(--surface);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -106,7 +108,7 @@ h2 {
 
 h1 {
   font-size: clamp(2rem, 5vw, 3.2rem);
-  max-width: 16ch;
+  max-width: 13ch;
   color: var(--text);
 }
 
@@ -146,7 +148,7 @@ h2 {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
 }

@@ -1,5 +1,18 @@
-const bytesToMbps = (value) => `${(value / 1_000_000).toFixed(1)} Mbps`;
-const formatMs = (value) => `${value.toFixed(1)} ms`;
+const bytesToMbps = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    return "0.0 Mbps";
+  }
+  return `${(number / 1_000_000).toFixed(1)} Mbps`;
+};
+
+const formatMs = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) {
+    return "0.0 ms";
+  }
+  return `${number.toFixed(1)} ms`;
+};
 
 const chartColors = {
   download: "#e20074",
@@ -45,13 +58,15 @@ function renderOverview() {
   document.getElementById("avg-upload").textContent = bytesToMbps(overview.averageUpload);
   document.getElementById("avg-latency").textContent = formatMs(overview.averageLatency);
   document.getElementById("last-seen").textContent = formatRelativeDate(overview.lastMeasuredAt);
-  document.getElementById("last-endpoint").textContent = overview.lastEndpoint || "No endpoint recorded";
+  document.getElementById("last-endpoint").textContent = overview.lastEndpoint || "Waiting for the first successful ingest";
 }
 
 function renderTable() {
   const body = document.getElementById("measurements-body");
   document.getElementById("recent-count").textContent = String(state.measurements.length);
-  document.getElementById("throughput-meta").textContent = `${state.measurements.length} recent measurements`;
+  document.getElementById("throughput-meta").textContent = state.measurements.length
+    ? `${state.measurements.length} recent measurements`
+    : "Waiting for telemetry";
 
   if (!state.measurements.length) {
     body.innerHTML = `<tr><td colspan="7">No measurements yet.</td></tr>`;
@@ -99,7 +114,11 @@ function drawChart(svg, points, series, labelFormatter) {
   const padding = { top: 24, right: 18, bottom: 40, left: 56 };
 
   if (!points.length) {
-    svg.innerHTML = "";
+    svg.innerHTML = `
+      <rect x="0" y="0" width="${width}" height="${height}" rx="12" fill="rgba(226, 0, 116, 0.04)"></rect>
+      <text x="${width / 2}" y="${height / 2 - 6}" fill="${chartColors.label}" font-size="16" text-anchor="middle">No measurements yet</text>
+      <text x="${width / 2}" y="${height / 2 + 18}" fill="${chartColors.label}" font-size="12" text-anchor="middle">The chart will populate after the first successful run.</text>
+    `;
     return;
   }
 
@@ -147,7 +166,13 @@ function formatRelativeDate(input) {
     return "No data";
   }
   const date = new Date(input);
+  if (Number.isNaN(date.getTime()) || date.getTime() < Date.UTC(2020, 0, 1)) {
+    return "No data";
+  }
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
+  if (!Number.isFinite(minutes) || minutes < 0) {
+    return "No data";
+  }
   if (minutes < 1) {
     return "Just now";
   }
@@ -163,18 +188,26 @@ function formatRelativeDate(input) {
 }
 
 function formatAbsoluteDate(input) {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return "No data";
+  }
   return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(input));
+  }).format(date);
 }
 
 function formatShortDate(input) {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
   return new Intl.DateTimeFormat("en-GB", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
-  }).format(new Date(input));
+  }).format(date);
 }
 
 function escapeHtml(value) {
