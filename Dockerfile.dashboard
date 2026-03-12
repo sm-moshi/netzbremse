@@ -11,6 +11,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o
 
 FROM dhi.io/debian-base:trixie-debian13
 
+LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
+      org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
+      org.opencontainers.image.title="netzbremse-dashboard" \
+      org.opencontainers.image.description="Netzbremse dashboard backed by PostgreSQL instead of shared filesystem state"
+
 WORKDIR /app
 COPY --from=builder /out/netzbremse-dashboard /usr/local/bin/netzbremse-dashboard
 

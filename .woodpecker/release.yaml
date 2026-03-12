@@ -37,6 +37,7 @@ steps:
         from_secret: github_username
       password:
         from_secret: github_token
+      provenance: mode=max
       cache_images:
         - *harbor_measurement_cache
 
@@ -66,67 +67,250 @@ steps:
         from_secret: github_username
       password:
         from_secret: github_token
+      provenance: mode=max
       cache_images:
         - *harbor_dashboard_cache
 
-  - name: mirror-measurement-to-harbor
-    image: woodpeckerci/plugin-docker-buildx
-    privileged: true
+  - name: trivy-scan-measurement
+    image: dhi.io/trivy:0.69.3-debian13-dev
     depends_on:
       - build-and-push-measurement
-    settings:
-      registry: harbor.m0sh1.cc
-      repo: *harbor_measurement_image
-      context: .
-      dockerfile: Dockerfile.measurement
-      logins:
-        - registry: dhi.io
-          username:
-            from_secret: dhi_username
-          password:
-            from_secret: dhi_token
-        - registry: harbor.m0sh1.cc
-          username:
-            from_secret: harbor_username
-          password:
-            from_secret: harbor_token
-      tags:
-        - "${CI_COMMIT_TAG##v}"
-        - latest
-      username:
-        from_secret: harbor_username
-      password:
-        from_secret: harbor_token
-      cache_images:
-        - *harbor_measurement_cache
+    environment:
+      IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      TRIVY_USERNAME:
+        from_secret: github_username
+      TRIVY_PASSWORD:
+        from_secret: github_token
+    commands:
+      - trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed $${IMAGE_REF}
+      - trivy image --exit-code 0 --severity HIGH --ignore-unfixed $${IMAGE_REF}
+      - trivy image --format cosign-vuln --output measurement.vuln.json $${IMAGE_REF}
 
-  - name: mirror-dashboard-to-harbor
-    image: woodpeckerci/plugin-docker-buildx
-    privileged: true
+  - name: trivy-scan-dashboard
+    image: dhi.io/trivy:0.69.3-debian13-dev
     depends_on:
       - build-and-push-dashboard
-    settings:
-      registry: harbor.m0sh1.cc
-      repo: *harbor_dashboard_image
-      context: .
-      dockerfile: Dockerfile.dashboard
-      logins:
-        - registry: dhi.io
-          username:
-            from_secret: dhi_username
-          password:
-            from_secret: dhi_token
-        - registry: harbor.m0sh1.cc
-          username:
-            from_secret: harbor_username
-          password:
-            from_secret: harbor_token
-      tags:
-        - "${CI_COMMIT_TAG##v}"
-        - latest
-      username:
+    environment:
+      IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      TRIVY_USERNAME:
+        from_secret: github_username
+      TRIVY_PASSWORD:
+        from_secret: github_token
+    commands:
+      - trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed $${IMAGE_REF}
+      - trivy image --exit-code 0 --severity HIGH --ignore-unfixed $${IMAGE_REF}
+      - trivy image --format cosign-vuln --output dashboard.vuln.json $${IMAGE_REF}
+
+  - name: sbom-generate-measurement
+    image: dhi.io/syft:1.42.1-dev
+    depends_on:
+      - trivy-scan-measurement
+    environment:
+      IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      SYFT_REGISTRY_AUTH_AUTHORITY: ghcr.io
+      SYFT_REGISTRY_AUTH_USERNAME:
+        from_secret: github_username
+      SYFT_REGISTRY_AUTH_PASSWORD:
+        from_secret: github_token
+    commands:
+      - syft registry:$${IMAGE_REF} -o spdx-json > measurement.sbom.spdx.json
+
+  - name: sbom-generate-dashboard
+    image: dhi.io/syft:1.42.1-dev
+    depends_on:
+      - trivy-scan-dashboard
+    environment:
+      IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      SYFT_REGISTRY_AUTH_AUTHORITY: ghcr.io
+      SYFT_REGISTRY_AUTH_USERNAME:
+        from_secret: github_username
+      SYFT_REGISTRY_AUTH_PASSWORD:
+        from_secret: github_token
+    commands:
+      - syft registry:$${IMAGE_REF} -o spdx-json > dashboard.sbom.spdx.json
+
+  - name: cosign-sign-measurement-ghcr
+    image: dhi.io/cosign:3.0.5-debian13-dev
+    depends_on:
+      - sbom-generate-measurement
+    environment:
+      IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      COSIGN_EXPERIMENTAL: "1"
+      COSIGN_KEY:
+        from_secret: cosign_key
+      COSIGN_PASSWORD:
+        from_secret: cosign_password
+      REGISTRY_USERNAME:
+        from_secret: github_username
+      REGISTRY_PASSWORD:
+        from_secret: github_token
+    commands:
+      - echo "$COSIGN_KEY" > /tmp/cosign.key
+      - cosign login ghcr.io -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD"
+      - cosign sign --key /tmp/cosign.key --yes --registry-referrers-mode=oci-1-1 $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type spdxjson --predicate measurement.sbom.spdx.json --yes $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type vuln --predicate measurement.vuln.json --yes $${IMAGE_REF}
+      - rm -f /tmp/cosign.key
+
+  - name: cosign-sign-dashboard-ghcr
+    image: dhi.io/cosign:3.0.5-debian13-dev
+    depends_on:
+      - sbom-generate-dashboard
+    environment:
+      IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      COSIGN_EXPERIMENTAL: "1"
+      COSIGN_KEY:
+        from_secret: cosign_key
+      COSIGN_PASSWORD:
+        from_secret: cosign_password
+      REGISTRY_USERNAME:
+        from_secret: github_username
+      REGISTRY_PASSWORD:
+        from_secret: github_token
+    commands:
+      - echo "$COSIGN_KEY" > /tmp/cosign.key
+      - cosign login ghcr.io -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD"
+      - cosign sign --key /tmp/cosign.key --yes --registry-referrers-mode=oci-1-1 $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type spdxjson --predicate dashboard.sbom.spdx.json --yes $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type vuln --predicate dashboard.vuln.json --yes $${IMAGE_REF}
+      - rm -f /tmp/cosign.key
+
+  - name: mirror-measurement-to-harbor
+    image: gcr.io/go-containerregistry/crane:debug
+    depends_on:
+      - cosign-sign-measurement-ghcr
+    environment:
+      SRC_IMAGE: "ghcr.io/sm-moshi/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      DST_IMAGE: "harbor.m0sh1.cc/apps/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      GHCR_USERNAME:
+        from_secret: github_username
+      GHCR_PASSWORD:
+        from_secret: github_token
+      HARBOR_USERNAME:
         from_secret: harbor_username
-      password:
+      HARBOR_PASSWORD:
         from_secret: harbor_token
-      cache_images:
-        - *harbor_dashboard_cache
+    commands:
+      - crane auth login ghcr.io -u "$GHCR_USERNAME" -p "$GHCR_PASSWORD"
+      - crane auth login harbor.m0sh1.cc -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
+      - crane cp "$SRC_IMAGE" "$DST_IMAGE"
+      - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-measurement:latest"
+
+  - name: mirror-dashboard-to-harbor
+    image: gcr.io/go-containerregistry/crane:debug
+    depends_on:
+      - cosign-sign-dashboard-ghcr
+    environment:
+      SRC_IMAGE: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      DST_IMAGE: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      GHCR_USERNAME:
+        from_secret: github_username
+      GHCR_PASSWORD:
+        from_secret: github_token
+      HARBOR_USERNAME:
+        from_secret: harbor_username
+      HARBOR_PASSWORD:
+        from_secret: harbor_token
+    commands:
+      - crane auth login ghcr.io -u "$GHCR_USERNAME" -p "$GHCR_PASSWORD"
+      - crane auth login harbor.m0sh1.cc -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
+      - crane cp "$SRC_IMAGE" "$DST_IMAGE"
+      - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-dashboard:latest"
+
+  - name: cosign-sign-measurement-harbor
+    image: dhi.io/cosign:3.0.5-debian13-dev
+    depends_on:
+      - mirror-measurement-to-harbor
+    environment:
+      IMAGE_REF: "harbor.m0sh1.cc/apps/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      COSIGN_EXPERIMENTAL: "1"
+      COSIGN_KEY:
+        from_secret: cosign_key
+      COSIGN_PASSWORD:
+        from_secret: cosign_password
+      REGISTRY_USERNAME:
+        from_secret: harbor_username
+      REGISTRY_PASSWORD:
+        from_secret: harbor_token
+    commands:
+      - echo "$COSIGN_KEY" > /tmp/cosign.key
+      - cosign login harbor.m0sh1.cc -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD"
+      - cosign sign --key /tmp/cosign.key --yes --registry-referrers-mode=oci-1-1 $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type spdxjson --predicate measurement.sbom.spdx.json --yes $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type vuln --predicate measurement.vuln.json --yes $${IMAGE_REF}
+      - rm -f /tmp/cosign.key measurement.sbom.spdx.json measurement.vuln.json
+
+  - name: cosign-sign-dashboard-harbor
+    image: dhi.io/cosign:3.0.5-debian13-dev
+    depends_on:
+      - mirror-dashboard-to-harbor
+    environment:
+      IMAGE_REF: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      COSIGN_EXPERIMENTAL: "1"
+      COSIGN_KEY:
+        from_secret: cosign_key
+      COSIGN_PASSWORD:
+        from_secret: cosign_password
+      REGISTRY_USERNAME:
+        from_secret: harbor_username
+      REGISTRY_PASSWORD:
+        from_secret: harbor_token
+    commands:
+      - echo "$COSIGN_KEY" > /tmp/cosign.key
+      - cosign login harbor.m0sh1.cc -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD"
+      - cosign sign --key /tmp/cosign.key --yes --registry-referrers-mode=oci-1-1 $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type spdxjson --predicate dashboard.sbom.spdx.json --yes $${IMAGE_REF}
+      - cosign attest --key /tmp/cosign.key --type vuln --predicate dashboard.vuln.json --yes $${IMAGE_REF}
+      - rm -f /tmp/cosign.key dashboard.sbom.spdx.json dashboard.vuln.json
+
+  - name: notation-sign-measurement-harbor
+    image: dhi.io/notation:1.3.2-debian13-dev
+    depends_on:
+      - cosign-sign-measurement-harbor
+    environment:
+      IMAGE_REF: "harbor.m0sh1.cc/apps/netzbremse-measurement:${CI_COMMIT_TAG##v}"
+      NOTATION_KEY:
+        from_secret: notation_key
+      NOTATION_CERT:
+        from_secret: notation_cert
+      REGISTRY_USERNAME:
+        from_secret: harbor_username
+      REGISTRY_PASSWORD:
+        from_secret: harbor_token
+    commands:
+      - mkdir -p /tmp/notation $HOME/.config/notation $HOME/.docker
+      - echo "$NOTATION_KEY" > /tmp/notation/harbor.key
+      - echo "$NOTATION_CERT" > /tmp/notation/harbor.crt
+      - |
+        cat > $HOME/.config/notation/signingkeys.json <<EOF
+        {"default":"harbor","keys":[{"name":"harbor","keyPath":"/tmp/notation/harbor.key","certPath":"/tmp/notation/harbor.crt"}]}
+        EOF
+      - printf '{"auths":{"harbor.m0sh1.cc":{"auth":"%s"}}}' "$(printf '%s:%s' "$REGISTRY_USERNAME" "$REGISTRY_PASSWORD" | base64)" > $HOME/.docker/config.json
+      - notation sign --force-referrers-tag=false --key harbor $${IMAGE_REF}
+      - rm -rf /tmp/notation $HOME/.docker/config.json
+
+  - name: notation-sign-dashboard-harbor
+    image: dhi.io/notation:1.3.2-debian13-dev
+    depends_on:
+      - cosign-sign-dashboard-harbor
+    environment:
+      IMAGE_REF: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
+      NOTATION_KEY:
+        from_secret: notation_key
+      NOTATION_CERT:
+        from_secret: notation_cert
+      REGISTRY_USERNAME:
+        from_secret: harbor_username
+      REGISTRY_PASSWORD:
+        from_secret: harbor_token
+    commands:
+      - mkdir -p /tmp/notation $HOME/.config/notation $HOME/.docker
+      - echo "$NOTATION_KEY" > /tmp/notation/harbor.key
+      - echo "$NOTATION_CERT" > /tmp/notation/harbor.crt
+      - |
+        cat > $HOME/.config/notation/signingkeys.json <<EOF
+        {"default":"harbor","keys":[{"name":"harbor","keyPath":"/tmp/notation/harbor.key","certPath":"/tmp/notation/harbor.crt"}]}
+        EOF
+      - printf '{"auths":{"harbor.m0sh1.cc":{"auth":"%s"}}}' "$(printf '%s:%s' "$REGISTRY_USERNAME" "$REGISTRY_PASSWORD" | base64)" > $HOME/.docker/config.json
+      - notation sign --force-referrers-tag=false --key harbor $${IMAGE_REF}
+      - rm -rf /tmp/notation $HOME/.docker/config.json

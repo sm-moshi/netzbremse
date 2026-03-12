@@ -12,6 +12,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o
 FROM dhi.io/node:24.14.0-debian13-dev
 
 # Puppeteer still needs apt-managed browser libraries in the final stage.
+LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
+      org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
+      org.opencontainers.image.title="netzbremse-measurement" \
+      org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
