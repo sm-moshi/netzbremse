@@ -1,5 +1,8 @@
 # netzbremse
 
+[![push-status](https://ci.m0sh1.cc/api/badges/9/status.svg)](https://ci.m0sh1.cc/repos/9)
+[![tag-status](https://ci.m0sh1.cc/api/badges/9/status.svg?event=tag)](https://ci.m0sh1.cc/repos/9)
+
 Forked `netzbremse` application for `m0sh1.cc`.
 
 This repository replaces the original shared-filesystem contract with a
@@ -16,18 +19,15 @@ Current scope:
 
 CI and release flow:
 
-- Woodpecker runs in-cluster against the Forge mirror of this repository.
+- Woodpecker runs in-cluster directly against `sm-moshi/netzbremse` on GitHub.
 - Pushes to `main` run validation and `semantic-release`.
-- The release step rewrites `origin` to `https://github.com/sm-moshi/netzbremse.git`
-  before running `semantic-release`, so tags and GitHub releases are created on
-  GitHub rather than on the Forge mirror.
+- `semantic-release` creates GitHub tags and releases directly on
+  `https://github.com/sm-moshi/netzbremse`.
 - Version tags (`v*`) trigger Woodpecker image publishing to:
   - `ghcr.io/sm-moshi/netzbremse-dashboard`
   - `ghcr.io/sm-moshi/netzbremse-measurement`
-- Tag-driven image publishing therefore depends on the Forge pull mirror
-  importing GitHub tags and emitting tag events to Woodpecker. If Forge mirror
-  tag sync does not emit tag events, the publish flow must be collapsed into the
-  `main` push pipeline instead of relying on the separate tag pipeline.
+- The default Woodpecker badge tracks push pipelines on repo `9`.
+- The tag badge tracks tag-publish pipelines on repo `9`.
 
 Required Woodpecker secrets:
 

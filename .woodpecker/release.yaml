@@ -13,6 +13,7 @@ steps:
     settings:
       registry: ghcr.io
       repo: *measurement_image
+      context: .
       dockerfile: Dockerfile.measurement
       tags:
         - "${CI_COMMIT_TAG##v}"
@@ -28,6 +29,7 @@ steps:
     settings:
       registry: ghcr.io
       repo: *dashboard_image
+      context: .
       dockerfile: Dockerfile.dashboard
       tags:
         - "${CI_COMMIT_TAG##v}"
