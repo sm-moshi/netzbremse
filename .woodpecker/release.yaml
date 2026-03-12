@@ -197,7 +197,7 @@ steps:
         from_secret: harbor_token
     commands:
       - apt-get update
-      - apt-get install -y --no-install-recommends ca-certificates curl tar
+      - apt-get install -y --no-install-recommends ca-certificates curl gzip tar
       - curl -fsSL "https://github.com/google/go-containerregistry/releases/download/$CRANE_VERSION/go-containerregistry_Linux_x86_64.tar.gz" -o /tmp/go-containerregistry.tar.gz
       - tar -C /usr/local/bin -xzf /tmp/go-containerregistry.tar.gz crane
       - rm -rf /var/lib/apt/lists/* /tmp/go-containerregistry.tar.gz
@@ -224,7 +224,7 @@ steps:
         from_secret: harbor_token
     commands:
       - apt-get update
-      - apt-get install -y --no-install-recommends ca-certificates curl tar
+      - apt-get install -y --no-install-recommends ca-certificates curl gzip tar
       - curl -fsSL "https://github.com/google/go-containerregistry/releases/download/$CRANE_VERSION/go-containerregistry_Linux_x86_64.tar.gz" -o /tmp/go-containerregistry.tar.gz
       - tar -C /usr/local/bin -xzf /tmp/go-containerregistry.tar.gz crane
       - rm -rf /var/lib/apt/lists/* /tmp/go-containerregistry.tar.gz

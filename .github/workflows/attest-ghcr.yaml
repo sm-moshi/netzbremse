@@ -4,7 +4,6 @@ on:
   registry_package:
     types:
       - published
-      - updated
   workflow_dispatch:
     inputs:
       image_name:
@@ -23,7 +22,7 @@ permissions:
   attestations: write
   contents: read
   id-token: write
-  packages: read
+  packages: write
 
 concurrency:
   group: attest-${{ github.workflow }}-${{ github.event.registry_package.name || inputs.image_name }}-${{ github.event.registry_package.package_version.container_metadata.tag.name || inputs.image_tag }}
@@ -36,6 +35,7 @@ jobs:
       (
         github.event.registry_package.package_type == 'container' &&
         startsWith(github.event.registry_package.name, 'netzbremse-') &&
+        github.event.registry_package.package_version.container_metadata.tag.name != '' &&
         github.event.registry_package.package_version.container_metadata.tag.name != 'latest'
       )
     runs-on: ubuntu-latest
