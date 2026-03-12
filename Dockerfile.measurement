@@ -1,41 +1,29 @@
-FROM --platform=$BUILDPLATFORM dhi.io/golang:1.26.1-debian13-dev AS builder
+FROM dhi.io/golang:1.26.1-alpine3.23-dev AS builder
 
 WORKDIR /src
-
-ARG TARGETOS
-ARG TARGETARCH
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY cmd/measurement ./cmd/measurement
 COPY internal ./internal
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/netzbremse-measurement ./cmd/measurement
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/netzbremse-measurement ./cmd/measurement
 
-FROM --platform=$BUILDPLATFORM dhi.io/node:24.14.0-debian13-dev AS node-deps
-
-LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
-      org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
-      org.opencontainers.image.title="netzbremse-measurement" \
-      org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
+FROM dhi.io/node:24-alpine3.23-dev AS node-deps
 
 WORKDIR /app
 COPY package.json package-lock.json /app/
 RUN npm ci --omit=dev --no-audit --no-fund \
   && npm cache clean --force
 
-FROM dhi.io/node:24.14.0-debian13-dev
+FROM dhi.io/node:24-alpine3.23-dev
 
 LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
       org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
       org.opencontainers.image.title="netzbremse-measurement" \
       org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-       chromium fonts-liberation libatk-bridge2.0-0 libgtk-3-0 libnss3 \
-       libxcomposite1 libxdamage1 libxrandr2 xdg-utils \
-  && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 
 WORKDIR /app
 COPY --from=node-deps --chown=node:node /app/package.json /app/package-lock.json /app/
@@ -44,7 +32,7 @@ COPY --chown=node:node scripts/netzbremse-browser.mjs /app/netzbremse-browser.mj
 COPY --from=builder /out/netzbremse-measurement /usr/local/bin/netzbremse-measurement
 
 ENV HOME=/home/node \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
     PUPPETEER_SKIP_DOWNLOAD=true
 USER node
 
