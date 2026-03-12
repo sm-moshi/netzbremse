@@ -16,12 +16,18 @@ Current scope:
 
 CI and release flow:
 
-- Woodpecker runs in-cluster from this repository.
+- Woodpecker runs in-cluster against the Forge mirror of this repository.
 - Pushes to `main` run validation and `semantic-release`.
-- `semantic-release` creates Git tags and GitHub releases.
+- The release step rewrites `origin` to `https://github.com/sm-moshi/netzbremse.git`
+  before running `semantic-release`, so tags and GitHub releases are created on
+  GitHub rather than on the Forge mirror.
 - Version tags (`v*`) trigger Woodpecker image publishing to:
   - `ghcr.io/sm-moshi/netzbremse-dashboard`
   - `ghcr.io/sm-moshi/netzbremse-measurement`
+- Tag-driven image publishing therefore depends on the Forge pull mirror
+  importing GitHub tags and emitting tag events to Woodpecker. If Forge mirror
+  tag sync does not emit tag events, the publish flow must be collapsed into the
+  `main` push pipeline instead of relying on the separate tag pipeline.
 
 Required Woodpecker secrets:
 

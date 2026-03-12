@@ -22,6 +22,12 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_token
+      GH_TOKEN:
+        from_secret: github_token
     commands:
+      - git config user.name "woodpecker[bot]"
+      - git config user.email "woodpecker@m0sh1.cc"
+      - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/sm-moshi/netzbremse.git"
+      - git fetch --tags origin
       - npm ci
       - npx semantic-release
