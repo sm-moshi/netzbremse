@@ -10,7 +10,7 @@ variables:
 
 steps:
   - name: build-and-push-measurement
-    image: woodpeckerci/plugin-docker-buildx
+    image: woodpeckerci/plugin-docker-buildx@sha256:0584c3d19aeabfd24d929001bf068299a1f2239452c8eccfa676e3e167e83d32
     privileged: true
     environment:
       AWS_ACCESS_KEY_ID:
@@ -46,7 +46,7 @@ steps:
       cache_to: "type=s3,endpoint_url=http://garage.garage.svc.cluster.local:3900,bucket=buildkit-cache,region=garage,name=netzbremse-measurement,mode=max,use_path_style=true,ignore-error=true"
 
   - name: build-and-push-dashboard
-    image: woodpeckerci/plugin-docker-buildx
+    image: woodpeckerci/plugin-docker-buildx@sha256:0584c3d19aeabfd24d929001bf068299a1f2239452c8eccfa676e3e167e83d32
     privileged: true
     depends_on:
       - build-and-push-measurement
