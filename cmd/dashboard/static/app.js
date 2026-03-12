@@ -2,12 +2,12 @@ const bytesToMbps = (value) => `${(value / 1_000_000).toFixed(1)} Mbps`;
 const formatMs = (value) => `${value.toFixed(1)} ms`;
 
 const chartColors = {
-  download: "#ffb703",
-  upload: "#4cc9c0",
-  latency: "#fb7185",
-  jitter: "#c084fc",
-  grid: "rgba(148, 163, 184, 0.16)",
-  label: "#93a7ad",
+  download: "#e20074",
+  upload: "#059669",
+  latency: "#e11d48",
+  jitter: "#8b5cf6",
+  grid: "rgba(0, 0, 0, 0.08)",
+  label: "#6b7280",
 };
 
 const state = {
@@ -131,7 +131,7 @@ function drawChart(svg, points, series, labelFormatter) {
 
   const paths = series.map((entry) => {
     const d = points.map((point, idx) => `${idx === 0 ? "M" : "L"} ${x(idx)} ${y(Number(point[entry.key]) || 0)}`).join(" ");
-    return `<path d="${d}" fill="none" stroke="${entry.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />`;
+    return `<path d="${d}" fill="none" stroke="${entry.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />`;
   }).join("");
 
   svg.innerHTML = `

@@ -1,0 +1,88 @@
+name: attest-ghcr
+
+on:
+  registry_package:
+    types:
+      - published
+      - updated
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: GHCR image name without owner prefix
+        required: true
+        type: choice
+        options:
+          - netzbremse-measurement
+          - netzbremse-dashboard
+      image_tag:
+        description: Image tag to attest
+        required: true
+        type: string
+
+permissions:
+  attestations: write
+  contents: read
+  id-token: write
+  packages: read
+
+concurrency:
+  group: attest-${{ github.workflow }}-${{ github.event.registry_package.name || inputs.image_name }}-${{ github.event.registry_package.package_version.container_metadata.tag.name || inputs.image_tag }}
+  cancel-in-progress: true
+
+jobs:
+  attest:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.registry_package.package_type == 'container' &&
+        startsWith(github.event.registry_package.name, 'netzbremse-') &&
+        github.event.registry_package.package_version.container_metadata.tag.name != 'latest'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target image
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PACKAGE_NAME: ${{ github.event.registry_package.name }}
+          PACKAGE_TAG: ${{ github.event.registry_package.package_version.container_metadata.tag.name }}
+          INPUT_NAME: ${{ inputs.image_name }}
+          INPUT_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            image_name="$INPUT_NAME"
+            image_tag="$INPUT_TAG"
+          else
+            image_name="$PACKAGE_NAME"
+            image_tag="$PACKAGE_TAG"
+          fi
+          echo "image_name=$image_name" >> "$GITHUB_OUTPUT"
+          echo "image_ref=ghcr.io/sm-moshi/$image_name:$image_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve manifest digest
+        id: digest
+        env:
+          IMAGE_REF: ${{ steps.target.outputs.image_ref }}
+        run: |
+          set -euo pipefail
+          digest="$(docker buildx imagetools inspect "$IMAGE_REF" --format '{{json .Manifest.Digest}}' | tr -d '\"')"
+          echo "subject_name=${IMAGE_REF%%:*}" >> "$GITHUB_OUTPUT"
+          echo "subject_digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.digest.outputs.subject_name }}
+          subject-digest: ${{ steps.digest.outputs.subject_digest }}
+          push-to-registry: true
