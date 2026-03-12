@@ -26,6 +26,13 @@ CI and release flow:
 - Version tags (`v*`) trigger Woodpecker image publishing to:
   - `ghcr.io/sm-moshi/netzbremse-dashboard`
   - `ghcr.io/sm-moshi/netzbremse-measurement`
+- The image builds are pinned to Docker Hardened Images:
+  - `dhi.io/golang:1.26.1-debian13-dev` for the Go builder stages
+  - `dhi.io/debian-base:trixie-debian13` for the dashboard runtime
+  - `dhi.io/node:24.14.0-debian13-dev` for the measurement runtime
+- The measurement runtime intentionally stays on the hardened Node `dev`
+  variant because Puppeteer still needs Debian package installation in the
+  final image for browser system libraries.
 - The default Woodpecker badge tracks push pipelines on repo `9`.
 - The tag badge tracks tag-publish pipelines on repo `9`.
 
