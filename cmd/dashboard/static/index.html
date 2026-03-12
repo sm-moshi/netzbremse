@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Netzbremse</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <main class="shell">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Netzbremse / m0sh1.cc</p>
+          <h1>Speed telemetry without shared storage.</h1>
+          <p class="lede">
+            The dashboard now reads directly from CNPG in the <code>apps</code>
+            namespace. Measurements and UI are independent workloads.
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div class="signal-card">
+            <span class="signal-label">Last ingest</span>
+            <strong id="last-seen">Loading</strong>
+            <span id="last-endpoint" class="signal-subtle"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="stat-card">
+          <span class="stat-label">Success Rate</span>
+          <strong id="success-rate">--</strong>
+          <span class="stat-subtle">Last 24 hours</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Download</span>
+          <strong id="avg-download">--</strong>
+          <span class="stat-subtle">Average successful run</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Upload</span>
+          <strong id="avg-upload">--</strong>
+          <span class="stat-subtle">Average successful run</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Latency</span>
+          <strong id="avg-latency">--</strong>
+          <span class="stat-subtle">Average successful run</span>
+        </article>
+      </section>
+
+      <section class="panel-grid">
+        <article class="panel chart-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Throughput</p>
+              <h2>Download and upload history</h2>
+            </div>
+            <p class="panel-meta" id="throughput-meta">Recent measurements</p>
+          </div>
+          <svg id="throughput-chart" viewBox="0 0 800 320" preserveAspectRatio="none"></svg>
+        </article>
+
+        <article class="panel chart-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Stability</p>
+              <h2>Latency and jitter</h2>
+            </div>
+            <p class="panel-meta">Milliseconds per run</p>
+          </div>
+          <svg id="latency-chart" viewBox="0 0 800 320" preserveAspectRatio="none"></svg>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Measurements</p>
+            <h2>Recent runs</h2>
+          </div>
+          <p class="panel-meta"><span id="recent-count">0</span> entries rendered</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Endpoint</th>
+                <th>Status</th>
+                <th>Download</th>
+                <th>Upload</th>
+                <th>Latency</th>
+                <th>Jitter</th>
+              </tr>
+            </thead>
+            <tbody id="measurements-body">
+              <tr>
+                <td colspan="7">Loading measurements…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
