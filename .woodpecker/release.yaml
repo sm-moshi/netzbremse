@@ -178,10 +178,11 @@ steps:
       - rm -f /tmp/cosign.key
 
   - name: mirror-measurement-to-harbor
-    image: gcr.io/go-containerregistry/crane:debug
+    image: dhi.io/node:24.14.0-debian13-dev
     depends_on:
       - cosign-sign-measurement-ghcr
     environment:
+      CRANE_VERSION: "v0.21.2"
       SRC_IMAGE: "ghcr.io/sm-moshi/netzbremse-measurement:${CI_COMMIT_TAG##v}"
       DST_IMAGE: "harbor.m0sh1.cc/apps/netzbremse-measurement:${CI_COMMIT_TAG##v}"
       GHCR_USERNAME:
@@ -193,16 +194,22 @@ steps:
       HARBOR_PASSWORD:
         from_secret: harbor_token
     commands:
+      - apt-get update
+      - apt-get install -y --no-install-recommends ca-certificates curl tar
+      - curl -fsSL "https://github.com/google/go-containerregistry/releases/download/$CRANE_VERSION/go-containerregistry_Linux_x86_64.tar.gz" -o /tmp/go-containerregistry.tar.gz
+      - tar -C /usr/local/bin -xzf /tmp/go-containerregistry.tar.gz crane
+      - rm -rf /var/lib/apt/lists/* /tmp/go-containerregistry.tar.gz
       - crane auth login ghcr.io -u "$GHCR_USERNAME" -p "$GHCR_PASSWORD"
       - crane auth login harbor.m0sh1.cc -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
       - crane cp "$SRC_IMAGE" "$DST_IMAGE"
       - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-measurement:latest"
 
   - name: mirror-dashboard-to-harbor
-    image: gcr.io/go-containerregistry/crane:debug
+    image: dhi.io/node:24.14.0-debian13-dev
     depends_on:
       - cosign-sign-dashboard-ghcr
     environment:
+      CRANE_VERSION: "v0.21.2"
       SRC_IMAGE: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       DST_IMAGE: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       GHCR_USERNAME:
@@ -214,6 +221,11 @@ steps:
       HARBOR_PASSWORD:
         from_secret: harbor_token
     commands:
+      - apt-get update
+      - apt-get install -y --no-install-recommends ca-certificates curl tar
+      - curl -fsSL "https://github.com/google/go-containerregistry/releases/download/$CRANE_VERSION/go-containerregistry_Linux_x86_64.tar.gz" -o /tmp/go-containerregistry.tar.gz
+      - tar -C /usr/local/bin -xzf /tmp/go-containerregistry.tar.gz crane
+      - rm -rf /var/lib/apt/lists/* /tmp/go-containerregistry.tar.gz
       - crane auth login ghcr.io -u "$GHCR_USERNAME" -p "$GHCR_PASSWORD"
       - crane auth login harbor.m0sh1.cc -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
       - crane cp "$SRC_IMAGE" "$DST_IMAGE"
