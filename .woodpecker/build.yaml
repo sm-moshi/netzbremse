@@ -25,6 +25,9 @@ steps:
       GH_TOKEN:
         from_secret: github_token
     commands:
+      - apt-get update
+      - apt-get install -y --no-install-recommends git ca-certificates
+      - rm -rf /var/lib/apt/lists/*
       - git config user.name "woodpecker[bot]"
       - git config user.email "woodpecker@m0sh1.cc"
       - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/sm-moshi/netzbremse.git"
