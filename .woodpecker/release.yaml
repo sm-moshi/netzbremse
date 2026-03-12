@@ -7,8 +7,6 @@ variables:
   - &dashboard_image "ghcr.io/sm-moshi/netzbremse-dashboard"
   - &harbor_measurement_image "harbor.m0sh1.cc/apps/netzbremse-measurement"
   - &harbor_dashboard_image "harbor.m0sh1.cc/apps/netzbremse-dashboard"
-  - &measurement_cache "harbor.m0sh1.cc/cache/netzbremse-measurement:buildkit"
-  - &dashboard_cache "harbor.m0sh1.cc/cache/netzbremse-dashboard:buildkit"
 
 steps:
   - name: build-and-push-measurement
@@ -39,8 +37,10 @@ steps:
       password:
         from_secret: github_token
       provenance: mode=max
-      cache_images:
-        - *measurement_cache
+      cache_from:
+        - "type=registry,ref=harbor.m0sh1.cc/cache/netzbremse-measurement:buildkit"
+      cache_to:
+        - "type=registry,ref=harbor.m0sh1.cc/cache/netzbremse-measurement:buildkit,mode=max,ignore-error=true"
 
   - name: build-and-push-dashboard
     image: woodpeckerci/plugin-docker-buildx
@@ -72,8 +72,10 @@ steps:
       password:
         from_secret: github_token
       provenance: mode=max
-      cache_images:
-        - *dashboard_cache
+      cache_from:
+        - "type=registry,ref=harbor.m0sh1.cc/cache/netzbremse-dashboard:buildkit"
+      cache_to:
+        - "type=registry,ref=harbor.m0sh1.cc/cache/netzbremse-dashboard:buildkit,mode=max,ignore-error=true"
 
   - name: trivy-scan-measurement
     image: dhi.io/trivy:0.69.3-debian13-dev
