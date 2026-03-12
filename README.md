@@ -80,6 +80,10 @@ full release pipeline:
 4. Mirror to `harbor.m0sh1.cc/apps/` with Cosign + Notation signatures
 5. GitHub Actions generate CodeQL analysis and build provenance attestations
 
+For the live GitOps deployment, `ghcr.io` is the source of truth. Harbor keeps a
+signed replica for storage and downstream reuse, but the cluster should consume
+`ghcr.io/sm-moshi/netzbremse-*` images.
+
 ## Licence
 
 This project builds on the open measurement infrastructure published by
