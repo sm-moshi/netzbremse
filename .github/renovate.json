@@ -81,6 +81,12 @@
       "description": "Group semantic-release tooling",
       "matchPackageNames": ["/semantic-release/"],
       "groupName": "semantic-release"
+    },
+    {
+      "description": "Group actions/* GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["/^actions\\//"],
+      "groupName": "actions github actions"
     }
   ]
 }
