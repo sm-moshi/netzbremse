@@ -14,6 +14,20 @@ Current scope:
 - `Dockerfile.measurement`: image for the measurement worker
 - `Dockerfile.dashboard`: image for the dashboard service
 
+CI and release flow:
+
+- Woodpecker runs in-cluster from this repository.
+- Pushes to `main` run validation and `semantic-release`.
+- `semantic-release` creates Git tags and GitHub releases.
+- Version tags (`v*`) trigger Woodpecker image publishing to:
+  - `ghcr.io/sm-moshi/netzbremse-dashboard`
+  - `ghcr.io/sm-moshi/netzbremse-measurement`
+
+Required Woodpecker secrets:
+
+- `github_username`
+- `github_token`
+
 The production deployment is owned by:
 
 - `/Users/smeya/git/m0sh1.cc/infra/apps/user/netzbremse`

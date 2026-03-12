@@ -1,12 +1,27 @@
 when:
-  - event: [push, pull_request]
+  - event: pull_request
+  - event: push
+    branch: main
 
 steps:
-  measurement:
-    image: docker:cli
+  - name: go-test
+    image: golang:1.26.1-bookworm
     commands:
-      - echo "build contract placeholder for netzbremse measurement image"
-  dashboard:
-    image: docker:cli
+      - go test ./...
+
+  - name: browser-script-check
+    image: node:22-bookworm-slim
     commands:
-      - echo "build contract placeholder for netzbremse dashboard image"
+      - node --check scripts/netzbremse-browser.mjs
+
+  - name: release
+    image: node:22-bookworm-slim
+    when:
+      - event: push
+        branch: main
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - npm ci
+      - npx semantic-release

@@ -1,0 +1,38 @@
+when:
+  - event: tag
+    ref: refs/tags/v*
+
+variables:
+  - &measurement_image "ghcr.io/sm-moshi/netzbremse-measurement"
+  - &dashboard_image "ghcr.io/sm-moshi/netzbremse-dashboard"
+
+steps:
+  - name: build-and-push-measurement
+    image: woodpeckerci/plugin-docker-buildx
+    privileged: true
+    settings:
+      registry: ghcr.io
+      repo: *measurement_image
+      dockerfile: Dockerfile.measurement
+      tags:
+        - "${CI_COMMIT_TAG##v}"
+        - latest
+      username:
+        from_secret: github_username
+      password:
+        from_secret: github_token
+
+  - name: build-and-push-dashboard
+    image: woodpeckerci/plugin-docker-buildx
+    privileged: true
+    settings:
+      registry: ghcr.io
+      repo: *dashboard_image
+      dockerfile: Dockerfile.dashboard
+      tags:
+        - "${CI_COMMIT_TAG##v}"
+        - latest
+      username:
+        from_secret: github_username
+      password:
+        from_secret: github_token
