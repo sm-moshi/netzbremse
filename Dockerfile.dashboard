@@ -1,4 +1,4 @@
-FROM dhi.io/golang:1.26-dev AS builder
+FROM dhi.io/golang:1.26.1-debian13-dev AS builder
 
 WORKDIR /src
 
@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/netzbremse-dashboard ./cmd/dashboard
 
-FROM dhi.io/debian-base:13
+FROM dhi.io/debian-base:trixie-debian13
 
 WORKDIR /app
 COPY --from=builder /out/netzbremse-dashboard /usr/local/bin/netzbremse-dashboard
