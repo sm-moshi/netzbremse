@@ -40,6 +40,14 @@ Required Woodpecker secrets:
 
 - `github_username`
 - `github_token`
+- `dhi_username`
+- `dhi_token`
+
+The `dhi_*` secrets are the Docker Hardened Images pull credentials used for:
+
+- `dhi.io/golang:1.26.1-debian13-dev`
+- `dhi.io/node:24.14.0-debian13-dev`
+- `dhi.io/debian-base:trixie-debian13`
 
 The production deployment is owned by:
 

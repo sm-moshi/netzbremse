@@ -15,6 +15,12 @@ steps:
       repo: *measurement_image
       context: .
       dockerfile: Dockerfile.measurement
+      logins:
+        - registry: dhi.io
+          username:
+            from_secret: dhi_username
+          password:
+            from_secret: dhi_token
       tags:
         - "${CI_COMMIT_TAG##v}"
         - latest
@@ -31,6 +37,12 @@ steps:
       repo: *dashboard_image
       context: .
       dockerfile: Dockerfile.dashboard
+      logins:
+        - registry: dhi.io
+          username:
+            from_secret: dhi_username
+          password:
+            from_secret: dhi_token
       tags:
         - "${CI_COMMIT_TAG##v}"
         - latest
