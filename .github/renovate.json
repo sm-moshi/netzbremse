@@ -83,10 +83,9 @@
       "groupName": "semantic-release"
     },
     {
-      "description": "Group actions/* GitHub Actions",
+      "description": "Group all GitHub Actions into a single PR",
       "matchManagers": ["github-actions"],
-      "matchPackageNames": ["/^actions\\//"],
-      "groupName": "actions github actions"
+      "groupName": "github actions"
     }
   ]
 }
