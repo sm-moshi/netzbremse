@@ -34,5 +34,4 @@ steps:
       - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/sm-moshi/netzbremse.git"
       - git fetch --tags origin
       - npm ci
-      - chmod +x node_modules/.bin/*
-      - npx semantic-release
+      - node node_modules/.bin/semantic-release
