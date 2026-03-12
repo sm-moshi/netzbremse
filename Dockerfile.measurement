@@ -24,12 +24,18 @@ COPY package.json package-lock.json /app/
 RUN npm ci --omit=dev --no-audit --no-fund \
   && npm cache clean --force
 
-FROM dhi.io/node:24.14.0-debian13
+FROM dhi.io/node:24.14.0-debian13-dev
 
 LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
       org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
       org.opencontainers.image.title="netzbremse-measurement" \
       org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       chromium fonts-liberation libatk-bridge2.0-0 libgtk-3-0 libnss3 \
+       libxcomposite1 libxdamage1 libxrandr2 xdg-utils \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=node-deps --chown=node:node /app/package.json /app/package-lock.json /app/
@@ -37,7 +43,9 @@ COPY --from=node-deps --chown=node:node /app/node_modules /app/node_modules
 COPY --chown=node:node scripts/netzbremse-browser.mjs /app/netzbremse-browser.mjs
 COPY --from=builder /out/netzbremse-measurement /usr/local/bin/netzbremse-measurement
 
-ENV HOME=/home/node
+ENV HOME=/home/node \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    PUPPETEER_SKIP_DOWNLOAD=true
 USER node
 
 EXPOSE 8081
