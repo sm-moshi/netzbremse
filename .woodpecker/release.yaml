@@ -7,6 +7,8 @@ variables:
   - &dashboard_image "ghcr.io/sm-moshi/netzbremse-dashboard"
   - &harbor_measurement_image "harbor.m0sh1.cc/apps/netzbremse-measurement"
   - &harbor_dashboard_image "harbor.m0sh1.cc/apps/netzbremse-dashboard"
+  - &harbor_measurement_cache "harbor.m0sh1.cc/cache/netzbremse-measurement:buildkit"
+  - &harbor_dashboard_cache "harbor.m0sh1.cc/cache/netzbremse-dashboard:buildkit"
 
 steps:
   - name: build-and-push-measurement
@@ -23,6 +25,11 @@ steps:
             from_secret: dhi_username
           password:
             from_secret: dhi_token
+        - registry: harbor.m0sh1.cc
+          username:
+            from_secret: harbor_username
+          password:
+            from_secret: harbor_token
       tags:
         - "${CI_COMMIT_TAG##v}"
         - latest
@@ -30,6 +37,8 @@ steps:
         from_secret: github_username
       password:
         from_secret: github_token
+      cache_images:
+        - *harbor_measurement_cache
 
   - name: build-and-push-dashboard
     image: woodpeckerci/plugin-docker-buildx
@@ -45,6 +54,11 @@ steps:
             from_secret: dhi_username
           password:
             from_secret: dhi_token
+        - registry: harbor.m0sh1.cc
+          username:
+            from_secret: harbor_username
+          password:
+            from_secret: harbor_token
       tags:
         - "${CI_COMMIT_TAG##v}"
         - latest
@@ -52,6 +66,8 @@ steps:
         from_secret: github_username
       password:
         from_secret: github_token
+      cache_images:
+        - *harbor_dashboard_cache
 
   - name: mirror-measurement-to-harbor
     image: woodpeckerci/plugin-docker-buildx
@@ -69,6 +85,11 @@ steps:
             from_secret: dhi_username
           password:
             from_secret: dhi_token
+        - registry: harbor.m0sh1.cc
+          username:
+            from_secret: harbor_username
+          password:
+            from_secret: harbor_token
       tags:
         - "${CI_COMMIT_TAG##v}"
         - latest
@@ -76,6 +97,8 @@ steps:
         from_secret: harbor_username
       password:
         from_secret: harbor_token
+      cache_images:
+        - *harbor_measurement_cache
 
   - name: mirror-dashboard-to-harbor
     image: woodpeckerci/plugin-docker-buildx
@@ -93,6 +116,11 @@ steps:
             from_secret: dhi_username
           password:
             from_secret: dhi_token
+        - registry: harbor.m0sh1.cc
+          username:
+            from_secret: harbor_username
+          password:
+            from_secret: harbor_token
       tags:
         - "${CI_COMMIT_TAG##v}"
         - latest
@@ -100,3 +128,5 @@ steps:
         from_secret: harbor_username
       password:
         from_secret: harbor_token
+      cache_images:
+        - *harbor_dashboard_cache

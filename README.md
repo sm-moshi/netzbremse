@@ -29,6 +29,9 @@ CI and release flow:
   - `harbor.m0sh1.cc/apps/netzbremse-dashboard`
   - `harbor.m0sh1.cc/apps/netzbremse-measurement`
 - Harbor publishing runs as a second stage after the GHCR publish steps succeed.
+- BuildKit cache is stored in Harbor and reused across release builds:
+  - `harbor.m0sh1.cc/cache/netzbremse-measurement:buildkit`
+  - `harbor.m0sh1.cc/cache/netzbremse-dashboard:buildkit`
 - The image builds are pinned to Docker Hardened Images:
   - `dhi.io/golang:1.26.1-debian13-dev` for the Go builder stages
   - `dhi.io/debian-base:trixie-debian13` for the dashboard runtime
