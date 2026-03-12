@@ -26,6 +26,9 @@ CI and release flow:
 - Version tags (`v*`) trigger Woodpecker image publishing to:
   - `ghcr.io/sm-moshi/netzbremse-dashboard`
   - `ghcr.io/sm-moshi/netzbremse-measurement`
+  - `harbor.m0sh1.cc/apps/netzbremse-dashboard`
+  - `harbor.m0sh1.cc/apps/netzbremse-measurement`
+- Harbor publishing runs as a second stage after the GHCR publish steps succeed.
 - The image builds are pinned to Docker Hardened Images:
   - `dhi.io/golang:1.26.1-debian13-dev` for the Go builder stages
   - `dhi.io/debian-base:trixie-debian13` for the dashboard runtime
@@ -42,6 +45,8 @@ Required Woodpecker secrets:
 - `github_token`
 - `dhi_username`
 - `dhi_token`
+- `harbor_username`
+- `harbor_token`
 
 The `dhi_*` secrets are the Docker Hardened Images pull credentials used for:
 
