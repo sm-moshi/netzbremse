@@ -12,7 +12,6 @@ steps:
   - name: build-and-push-measurement
     image: woodpeckerci/plugin-docker-buildx@sha256:0584c3d19aeabfd24d929001bf068299a1f2239452c8eccfa676e3e167e83d32
     privileged: true
-    # environment:  # S3 cache disabled — re-enable with garage_s3 secrets
     settings:
       registry: ghcr.io
       repo: *measurement_image
@@ -38,15 +37,12 @@ steps:
       password:
         from_secret: github_token
       provenance: mode=max
-      # cache_from: "type=s3,endpoint_url=http://garage.garage.svc.cluster.local:3900,bucket=buildkit-cache,region=garage,name=netzbremse-measurement,use_path_style=true"
-      # cache_to: "type=s3,endpoint_url=http://garage.garage.svc.cluster.local:3900,bucket=buildkit-cache,region=garage,name=netzbremse-measurement,mode=max,use_path_style=true,ignore-error=true"
 
   - name: build-and-push-dashboard
     image: woodpeckerci/plugin-docker-buildx@sha256:0584c3d19aeabfd24d929001bf068299a1f2239452c8eccfa676e3e167e83d32
     privileged: true
     depends_on:
       - build-and-push-measurement
-    # environment:  # S3 cache disabled — re-enable with garage_s3 secrets
     settings:
       registry: ghcr.io
       repo: *dashboard_image
@@ -72,8 +68,6 @@ steps:
       password:
         from_secret: github_token
       provenance: mode=max
-      # cache_from: "type=s3,endpoint_url=http://garage.garage.svc.cluster.local:3900,bucket=buildkit-cache,region=garage,name=netzbremse-dashboard,use_path_style=true"
-      # cache_to: "type=s3,endpoint_url=http://garage.garage.svc.cluster.local:3900,bucket=buildkit-cache,region=garage,name=netzbremse-dashboard,mode=max,use_path_style=true,ignore-error=true"
 
   - name: trivy-scan-measurement
     image: dhi.io/trivy:0.69.3-debian13-dev@sha256:5cb00cdc8470abcc76030811ab556dd4d1a3951c76b7295f52c0f837aca1688e
