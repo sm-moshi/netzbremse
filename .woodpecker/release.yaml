@@ -84,7 +84,7 @@ steps:
       cache_to: "type=s3,endpoint_url=http://garage.garage.svc.cluster.local:3900,bucket=buildkit-cache,region=garage,name=netzbremse-dashboard,mode=max,use_path_style=true,ignore-error=true"
 
   - name: trivy-scan-measurement
-    image: dhi.io/trivy:0.69.3-debian13-dev
+    image: dhi.io/trivy:0.69.3-debian13-dev@sha256:5cb00cdc8470abcc76030811ab556dd4d1a3951c76b7295f52c0f837aca1688e
     depends_on:
       - build-and-push-measurement
     environment:
@@ -99,7 +99,7 @@ steps:
       - trivy image --format cosign-vuln --output measurement.vuln.json $${IMAGE_REF}
 
   - name: trivy-scan-dashboard
-    image: dhi.io/trivy:0.69.3-debian13-dev
+    image: dhi.io/trivy:0.69.3-debian13-dev@sha256:5cb00cdc8470abcc76030811ab556dd4d1a3951c76b7295f52c0f837aca1688e
     depends_on:
       - trivy-scan-measurement
     environment:
@@ -114,7 +114,7 @@ steps:
       - trivy image --format cosign-vuln --output dashboard.vuln.json $${IMAGE_REF}
 
   - name: sbom-generate-measurement
-    image: dhi.io/syft:1.42.1-dev
+    image: dhi.io/syft:1.42.2-dev@sha256:6ac5f843670d885387e710b4703494ec8320c79e4799872a19e6b3b88418a51a
     depends_on:
       - trivy-scan-measurement
     environment:
@@ -128,7 +128,7 @@ steps:
       - syft registry:$${IMAGE_REF} -o spdx-json > measurement.sbom.spdx.json
 
   - name: sbom-generate-dashboard
-    image: dhi.io/syft:1.42.1-dev
+    image: dhi.io/syft:1.42.2-dev@sha256:6ac5f843670d885387e710b4703494ec8320c79e4799872a19e6b3b88418a51a
     depends_on:
       - sbom-generate-measurement
     environment:
@@ -142,7 +142,7 @@ steps:
       - syft registry:$${IMAGE_REF} -o spdx-json > dashboard.sbom.spdx.json
 
   - name: cosign-sign-measurement-ghcr
-    image: dhi.io/cosign:3.0.5-debian13-dev
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
       - sbom-generate-measurement
     environment:
@@ -165,7 +165,7 @@ steps:
       - rm -f /tmp/cosign.key
 
   - name: cosign-sign-dashboard-ghcr
-    image: dhi.io/cosign:3.0.5-debian13-dev
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
       - cosign-sign-measurement-ghcr
     environment:
@@ -188,7 +188,7 @@ steps:
       - rm -f /tmp/cosign.key
 
   - name: mirror-measurement-to-harbor
-    image: dhi.io/node:24.14.0-debian13-dev
+    image: dhi.io/node:24.14.0-debian13-dev@sha256:59eccbcc0d930d6ce9fa45f02c074daa6a36e93054421bcfa7d6857b5c882593
     depends_on:
       - cosign-sign-measurement-ghcr
     environment:
@@ -215,7 +215,7 @@ steps:
       - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-measurement:latest"
 
   - name: mirror-dashboard-to-harbor
-    image: dhi.io/node:24.14.0-debian13-dev
+    image: dhi.io/node:24.14.0-debian13-dev@sha256:59eccbcc0d930d6ce9fa45f02c074daa6a36e93054421bcfa7d6857b5c882593
     depends_on:
       - mirror-measurement-to-harbor
     environment:
@@ -242,7 +242,7 @@ steps:
       - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-dashboard:latest"
 
   - name: cosign-sign-measurement-harbor
-    image: dhi.io/cosign:3.0.5-debian13-dev
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
       - mirror-measurement-to-harbor
     environment:
@@ -265,7 +265,7 @@ steps:
       - rm -f /tmp/cosign.key measurement.sbom.spdx.json measurement.vuln.json
 
   - name: cosign-sign-dashboard-harbor
-    image: dhi.io/cosign:3.0.5-debian13-dev
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
       - cosign-sign-measurement-harbor
     environment:
@@ -288,7 +288,7 @@ steps:
       - rm -f /tmp/cosign.key dashboard.sbom.spdx.json dashboard.vuln.json
 
   - name: notation-sign-measurement-harbor
-    image: dhi.io/notation:1.3.2-debian13-dev
+    image: dhi.io/notation:1.3.2-debian13-dev@sha256:1837c85a13e06ab2fc739e4c760df9dd630ad8d97b8951e8f08c0abcf682862d
     depends_on:
       - cosign-sign-measurement-harbor
     environment:
@@ -314,7 +314,7 @@ steps:
       - rm -rf /tmp/notation $HOME/.docker/config.json
 
   - name: notation-sign-dashboard-harbor
-    image: dhi.io/notation:1.3.2-debian13-dev
+    image: dhi.io/notation:1.3.2-debian13-dev@sha256:1837c85a13e06ab2fc739e4c760df9dd630ad8d97b8951e8f08c0abcf682862d
     depends_on:
       - notation-sign-measurement-harbor
     environment:
