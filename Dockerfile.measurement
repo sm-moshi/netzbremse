@@ -21,9 +21,9 @@ RUN npm ci --omit=dev --no-audit --no-fund \
 FROM dhi.io/node:24.14.0-alpine3.23-dev@sha256:f40cd82db83444c570622fdb307075b2ad45228c0508bd99b97fea568e8e2241
 
 LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
-      org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
-      org.opencontainers.image.title="netzbremse-measurement" \
-      org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
+  org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
+  org.opencontainers.image.title="netzbremse-measurement" \
+  org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
 
 RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 
@@ -34,8 +34,8 @@ COPY --chown=node:node scripts/netzbremse-browser.mjs /app/netzbremse-browser.mj
 COPY --from=builder /out/netzbremse-measurement /usr/local/bin/netzbremse-measurement
 
 ENV HOME=/home/node \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
-    PUPPETEER_SKIP_DOWNLOAD=true
+  PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+  PUPPETEER_SKIP_DOWNLOAD=true
 USER node
 
 EXPOSE 8081

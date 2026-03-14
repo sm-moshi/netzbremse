@@ -25,11 +25,7 @@
     "dependencies"
   ],
   "pinDigests": false,
-  "registryAliases": {
-    "harbor.m0sh1.cc/dhi": "dhi.io",
-    "harbor.m0sh1.cc/ghcr": "ghcr.io",
-    "harbor.m0sh1.cc/hub": "docker.io"
-  },
+  "registryAliases": {},
   "customManagers": [
     {
       "customType": "regex",
