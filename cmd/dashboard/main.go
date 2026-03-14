@@ -7,7 +7,10 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/sm-moshi/netzbremse/internal/config"
@@ -18,7 +21,8 @@ import (
 var staticFS embed.FS
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
 	dbConfig, err := config.LoadDatabase()
 	if err != nil {
@@ -52,7 +56,8 @@ func main() {
 	mux.HandleFunc("/api/overview", func(w http.ResponseWriter, r *http.Request) {
 		overview, err := store.LoadOverview(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("overview query failed: %v", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, overview)
@@ -67,7 +72,8 @@ func main() {
 		}
 		items, err := store.ListLatest(r.Context(), limit)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("measurements query failed: %v", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, items)
@@ -80,8 +86,17 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	log.Printf("dashboard listening on %s", dashboardConfig.ListenAddress)
-	log.Fatal(server.ListenAndServe())
+	go func() {
+		log.Printf("dashboard listening on %s", dashboardConfig.ListenAddress)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	<-ctx.Done()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	_ = server.Shutdown(shutdownCtx)
 }
 
 func writeJSON(w http.ResponseWriter, value any) {

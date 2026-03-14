@@ -181,7 +181,7 @@ func (s *Store) ListLatest(ctx context.Context, limit int) ([]model.Measurement,
 		); err != nil {
 			return nil, fmt.Errorf("scan measurement: %w", err)
 		}
-		item.RawJSON = []byte(raw)
+		item.RawJSON = json.RawMessage(raw)
 		result = append(result, item)
 	}
 	if err := rows.Err(); err != nil {

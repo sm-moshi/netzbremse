@@ -9,6 +9,7 @@ variables:
   - &harbor_dashboard_image "harbor.m0sh1.cc/apps/netzbremse-dashboard"
 
 steps:
+  # ── Build (parallel) ───────────────────────────────────────────────
   - name: build-and-push-measurement
     image: woodpeckerci/plugin-docker-buildx@sha256:9b9622f587e79432b0ed6af11af73e666061050da881211f491e4e5240c8d45d
     privileged: true
@@ -41,8 +42,6 @@ steps:
   - name: build-and-push-dashboard
     image: woodpeckerci/plugin-docker-buildx@sha256:9b9622f587e79432b0ed6af11af73e666061050da881211f491e4e5240c8d45d
     privileged: true
-    depends_on:
-      - build-and-push-measurement
     settings:
       registry: ghcr.io
       repo: *dashboard_image
@@ -69,6 +68,7 @@ steps:
         from_secret: github_token
       provenance: mode=max
 
+  # ── Trivy scan (parallel, each after its own build) ────────────────
   - name: trivy-scan-measurement
     image: dhi.io/trivy:0.69.3-debian13-dev@sha256:5cb00cdc8470abcc76030811ab556dd4d1a3951c76b7295f52c0f837aca1688e
     depends_on:
@@ -87,7 +87,7 @@ steps:
   - name: trivy-scan-dashboard
     image: dhi.io/trivy:0.69.3-debian13-dev@sha256:5cb00cdc8470abcc76030811ab556dd4d1a3951c76b7295f52c0f837aca1688e
     depends_on:
-      - trivy-scan-measurement
+      - build-and-push-dashboard
     environment:
       IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       TRIVY_USERNAME:
@@ -99,6 +99,7 @@ steps:
       - trivy image --exit-code 0 --severity HIGH --ignore-unfixed $${IMAGE_REF}
       - trivy image --format cosign-vuln --output dashboard.vuln.json $${IMAGE_REF}
 
+  # ── SBOM generation (parallel, each after its own scan) ────────────
   - name: sbom-generate-measurement
     image: dhi.io/syft:1.42.2-dev@sha256:6ac5f843670d885387e710b4703494ec8320c79e4799872a19e6b3b88418a51a
     depends_on:
@@ -116,7 +117,7 @@ steps:
   - name: sbom-generate-dashboard
     image: dhi.io/syft:1.42.2-dev@sha256:6ac5f843670d885387e710b4703494ec8320c79e4799872a19e6b3b88418a51a
     depends_on:
-      - sbom-generate-measurement
+      - trivy-scan-dashboard
     environment:
       IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       SYFT_REGISTRY_AUTH_AUTHORITY: ghcr.io
@@ -127,6 +128,7 @@ steps:
     commands:
       - syft registry:$${IMAGE_REF} -o spdx-json > dashboard.sbom.spdx.json
 
+  # ── Cosign sign GHCR (parallel, each after its own SBOM) ──────────
   - name: cosign-sign-measurement-ghcr
     image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
@@ -153,7 +155,7 @@ steps:
   - name: cosign-sign-dashboard-ghcr
     image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
-      - cosign-sign-measurement-ghcr
+      - sbom-generate-dashboard
     environment:
       IMAGE_REF: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       COSIGN_EXPERIMENTAL: "1"
@@ -173,12 +175,12 @@ steps:
       - cosign attest --key /tmp/cosign.key --type vuln --predicate dashboard.vuln.json --yes $${IMAGE_REF}
       - rm -f /tmp/cosign.key
 
+  # ── Mirror to Harbor (parallel, each after its own GHCR sign) ──────
   - name: mirror-measurement-to-harbor
-    image: dhi.io/node:24.14.0-debian13-dev@sha256:59eccbcc0d930d6ce9fa45f02c074daa6a36e93054421bcfa7d6857b5c882593
+    image: dhi.io/crane:0.21.2-debian13-dev
     depends_on:
       - cosign-sign-measurement-ghcr
     environment:
-      CRANE_VERSION: "v0.21.2"
       SRC_IMAGE: "ghcr.io/sm-moshi/netzbremse-measurement:${CI_COMMIT_TAG##v}"
       DST_IMAGE: "harbor.m0sh1.cc/apps/netzbremse-measurement:${CI_COMMIT_TAG##v}"
       GHCR_USERNAME:
@@ -190,22 +192,16 @@ steps:
       HARBOR_PASSWORD:
         from_secret: harbor_token
     commands:
-      - apt-get update
-      - apt-get install -y --no-install-recommends ca-certificates curl gzip tar
-      - curl -fsSL "https://github.com/google/go-containerregistry/releases/download/$CRANE_VERSION/go-containerregistry_Linux_x86_64.tar.gz" -o /tmp/go-containerregistry.tar.gz
-      - tar -C /usr/local/bin -xzf /tmp/go-containerregistry.tar.gz crane
-      - rm -rf /var/lib/apt/lists/* /tmp/go-containerregistry.tar.gz
       - crane auth login ghcr.io -u "$GHCR_USERNAME" -p "$GHCR_PASSWORD"
       - crane auth login harbor.m0sh1.cc -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
       - crane cp "$SRC_IMAGE" "$DST_IMAGE"
       - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-measurement:latest"
 
   - name: mirror-dashboard-to-harbor
-    image: dhi.io/node:24.14.0-debian13-dev@sha256:59eccbcc0d930d6ce9fa45f02c074daa6a36e93054421bcfa7d6857b5c882593
+    image: dhi.io/crane:0.21.2-debian13-dev
     depends_on:
-      - mirror-measurement-to-harbor
+      - cosign-sign-dashboard-ghcr
     environment:
-      CRANE_VERSION: "v0.21.2"
       SRC_IMAGE: "ghcr.io/sm-moshi/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       DST_IMAGE: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       GHCR_USERNAME:
@@ -217,16 +213,12 @@ steps:
       HARBOR_PASSWORD:
         from_secret: harbor_token
     commands:
-      - apt-get update
-      - apt-get install -y --no-install-recommends ca-certificates curl gzip tar
-      - curl -fsSL "https://github.com/google/go-containerregistry/releases/download/$CRANE_VERSION/go-containerregistry_Linux_x86_64.tar.gz" -o /tmp/go-containerregistry.tar.gz
-      - tar -C /usr/local/bin -xzf /tmp/go-containerregistry.tar.gz crane
-      - rm -rf /var/lib/apt/lists/* /tmp/go-containerregistry.tar.gz
       - crane auth login ghcr.io -u "$GHCR_USERNAME" -p "$GHCR_PASSWORD"
       - crane auth login harbor.m0sh1.cc -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
       - crane cp "$SRC_IMAGE" "$DST_IMAGE"
       - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-dashboard:latest"
 
+  # ── Cosign sign Harbor (parallel, each after its own mirror) ───────
   - name: cosign-sign-measurement-harbor
     image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
@@ -253,7 +245,7 @@ steps:
   - name: cosign-sign-dashboard-harbor
     image: dhi.io/cosign:3.0.5-debian13-dev@sha256:75d08035bfa25d496c7de3990500f375b314de3d75e6094b6ed19d37a7b9b080
     depends_on:
-      - cosign-sign-measurement-harbor
+      - mirror-dashboard-to-harbor
     environment:
       IMAGE_REF: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       COSIGN_EXPERIMENTAL: "1"
@@ -273,6 +265,7 @@ steps:
       - cosign attest --key /tmp/cosign.key --type vuln --predicate dashboard.vuln.json --yes $${IMAGE_REF}
       - rm -f /tmp/cosign.key dashboard.sbom.spdx.json dashboard.vuln.json
 
+  # ── Notation sign Harbor (parallel, each after its own cosign) ─────
   - name: notation-sign-measurement-harbor
     image: dhi.io/notation:1.3.2-debian13-dev@sha256:1837c85a13e06ab2fc739e4c760df9dd630ad8d97b8951e8f08c0abcf682862d
     depends_on:
@@ -302,7 +295,7 @@ steps:
   - name: notation-sign-dashboard-harbor
     image: dhi.io/notation:1.3.2-debian13-dev@sha256:1837c85a13e06ab2fc739e4c760df9dd630ad8d97b8951e8f08c0abcf682862d
     depends_on:
-      - notation-sign-measurement-harbor
+      - cosign-sign-dashboard-harbor
     environment:
       IMAGE_REF: "harbor.m0sh1.cc/apps/netzbremse-dashboard:${CI_COMMIT_TAG##v}"
       NOTATION_KEY:

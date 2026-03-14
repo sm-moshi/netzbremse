@@ -1,5 +1,7 @@
 FROM dhi.io/golang:1.26.1-alpine3.23-dev@sha256:af429d5373ce50e4515e0d1d3c1d24549303a941c9566e8e5202c6ab87ad55ef AS builder
 
+ARG TARGETARCH=amd64
+
 WORKDIR /src
 
 COPY go.mod go.sum ./
@@ -7,7 +9,7 @@ RUN go mod download
 
 COPY cmd/dashboard ./cmd/dashboard
 COPY internal ./internal
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/netzbremse-dashboard ./cmd/dashboard
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/netzbremse-dashboard ./cmd/dashboard
 
 FROM dhi.io/debian-base:trixie-debian13@sha256:9ef766670af4743904b0f992a26b525c6c914648b56ea597ec23452adcf1a95d
 

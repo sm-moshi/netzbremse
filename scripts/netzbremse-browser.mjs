@@ -33,17 +33,13 @@ try {
     window.nbSpeedtestOptions = { acceptedPolicy: true };
   });
 
-  const result = await new Promise(async (resolve, reject) => {
-    await page.exposeFunction("nbSpeedtestOnResult", (payload) => resolve(payload));
-    await page.exposeFunction("nbSpeedtestOnFinished", () => {});
-
-    try {
-      await page.click("nb-speedtest >>>> #nb_speedtest_start_btn");
-    } catch (error) {
-      reject(error);
-    }
+  const resultPromise = new Promise((resolve) => {
+    page.exposeFunction("nbSpeedtestOnResult", (payload) => resolve(payload));
   });
+  await page.exposeFunction("nbSpeedtestOnFinished", () => {});
+  await page.click("nb-speedtest >>>> #nb_speedtest_start_btn");
 
+  const result = await resultPromise;
   process.stdout.write(JSON.stringify(result));
 } finally {
   await browser.close();
