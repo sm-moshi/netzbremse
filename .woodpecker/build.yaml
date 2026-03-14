@@ -4,8 +4,30 @@ when:
     branch: main
 
 steps:
+  - name: restore-cache
+    image: meltwater/drone-cache
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: garage_s3_access_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: garage_s3_secret_key
+    settings:
+      restore: true
+      backend: s3
+      endpoint: http://garage.garage.svc.cluster.local:3900
+      bucket: buildkit-cache
+      region: garage
+      path_style: true
+      archive_format: zstd
+      cache_key: "netzbremse-go-{{ checksum \"go.sum\" }}"
+      mount:
+        - .go-mod-cache
+        - node_modules
+
   - name: go-test
     image: golang:1.26.1-bookworm@sha256:c7a82e9e2df2fea5d8cb62a16aa6f796d2b2ed81ccad4ddd2bc9f0d22936c3f2
+    environment:
+      GOMODCACHE: /woodpecker/src/sm-moshi/netzbremse/.go-mod-cache
     commands:
       - go test ./...
 
@@ -35,3 +57,23 @@ steps:
       - git fetch --tags origin
       - npm ci
       - node node_modules/.bin/semantic-release
+
+  - name: rebuild-cache
+    image: meltwater/drone-cache
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: garage_s3_access_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: garage_s3_secret_key
+    settings:
+      rebuild: true
+      backend: s3
+      endpoint: http://garage.garage.svc.cluster.local:3900
+      bucket: buildkit-cache
+      region: garage
+      path_style: true
+      archive_format: zstd
+      cache_key: "netzbremse-go-{{ checksum \"go.sum\" }}"
+      mount:
+        - .go-mod-cache
+        - node_modules
