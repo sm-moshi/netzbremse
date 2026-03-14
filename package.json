@@ -14,5 +14,8 @@
   },
   "dependencies": {
     "puppeteer": "24.39.1"
+  },
+  "overrides": {
+    "yauzl": "3.2.1"
   }
 }

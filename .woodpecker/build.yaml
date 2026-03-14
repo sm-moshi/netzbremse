@@ -6,12 +6,11 @@ when:
 steps:
   - name: restore-cache
     image: meltwater/drone-cache
-    environment:
-      AWS_ACCESS_KEY_ID:
-        from_secret: garage_s3_access_key
-      AWS_SECRET_ACCESS_KEY:
-        from_secret: garage_s3_secret_key
     settings:
+      access_key:
+        from_secret: garage_s3_access_key
+      secret_key:
+        from_secret: garage_s3_secret_key
       restore: true
       backend: s3
       endpoint: http://garage.garage.svc.cluster.local:3900
@@ -60,12 +59,11 @@ steps:
 
   - name: rebuild-cache
     image: meltwater/drone-cache
-    environment:
-      AWS_ACCESS_KEY_ID:
-        from_secret: garage_s3_access_key
-      AWS_SECRET_ACCESS_KEY:
-        from_secret: garage_s3_secret_key
     settings:
+      access_key:
+        from_secret: garage_s3_access_key
+      secret_key:
+        from_secret: garage_s3_secret_key
       rebuild: true
       backend: s3
       endpoint: http://garage.garage.svc.cluster.local:3900
