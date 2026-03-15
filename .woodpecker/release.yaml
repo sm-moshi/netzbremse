@@ -11,7 +11,7 @@ variables:
 steps:
   # ── Build (parallel) ───────────────────────────────────────────────
   - name: build-and-push-measurement
-    image: woodpeckerci/plugin-docker-buildx@sha256:9b9622f587e79432b0ed6af11af73e666061050da881211f491e4e5240c8d45d
+    image: woodpeckerci/plugin-docker-buildx@sha256:186b1dc5dcf9b29a5d41d2833d80b1ac27413841cbac92992888f4050d247ce8
     privileged: true
     settings:
       registry: ghcr.io
@@ -40,7 +40,7 @@ steps:
       provenance: mode=max
 
   - name: build-and-push-dashboard
-    image: woodpeckerci/plugin-docker-buildx@sha256:9b9622f587e79432b0ed6af11af73e666061050da881211f491e4e5240c8d45d
+    image: woodpeckerci/plugin-docker-buildx@sha256:186b1dc5dcf9b29a5d41d2833d80b1ac27413841cbac92992888f4050d247ce8
     privileged: true
     settings:
       registry: ghcr.io
