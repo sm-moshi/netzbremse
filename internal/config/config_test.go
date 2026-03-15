@@ -188,6 +188,26 @@ func TestLoadDashboard(t *testing.T) {
 			t.Fatal("expected error for invalid limit")
 		}
 	})
+
+	t.Run("zero limit rejected", func(t *testing.T) {
+		t.Setenv("NETZBREMSE_DASHBOARD_LISTEN_ADDR", "")
+		t.Setenv("NETZBREMSE_DASHBOARD_LIMIT", "0")
+
+		_, err := LoadDashboard()
+		if err == nil {
+			t.Fatal("expected error for zero limit")
+		}
+	})
+
+	t.Run("negative limit rejected", func(t *testing.T) {
+		t.Setenv("NETZBREMSE_DASHBOARD_LISTEN_ADDR", "")
+		t.Setenv("NETZBREMSE_DASHBOARD_LIMIT", "-5")
+
+		_, err := LoadDashboard()
+		if err == nil {
+			t.Fatal("expected error for negative limit")
+		}
+	})
 }
 
 func TestEnvOrDefault(t *testing.T) {

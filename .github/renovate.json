@@ -18,26 +18,13 @@
     "npm",
     "dockerfile",
     "github-actions",
-    "woodpecker",
-    "custom.regex"
+    "woodpecker"
   ],
   "labels": [
     "dependencies"
   ],
   "pinDigests": false,
   "registryAliases": {},
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "crane release version in Woodpecker pipeline",
-      "managerFilePatterns": ["/.woodpecker/.+\\.yaml$/"],
-      "matchStrings": [
-        "CRANE_VERSION:\\s*\"(?<currentValue>v[^\"]+)\""
-      ],
-      "depNameTemplate": "google/go-containerregistry",
-      "datasourceTemplate": "github-releases"
-    }
-  ],
   "packageRules": [
     {
       "description": "DHI image versioning: variant-locked via compatibility group",

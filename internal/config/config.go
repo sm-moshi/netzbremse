@@ -62,6 +62,9 @@ func LoadDashboard() (Dashboard, error) {
 		if err != nil {
 			return Dashboard{}, fmt.Errorf("parse NETZBREMSE_DASHBOARD_LIMIT: %w", err)
 		}
+		if parsed <= 0 {
+			return Dashboard{}, fmt.Errorf("NETZBREMSE_DASHBOARD_LIMIT must be positive, got %d", parsed)
+		}
 		limit = parsed
 	}
 	return Dashboard{
