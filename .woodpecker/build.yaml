@@ -5,6 +5,7 @@ when:
 
 steps:
   - name: restore-cache
+    failure: ignore
     image: meltwater/drone-cache@sha256:f4429bda3e4f2af2cceb40deee10b8cc5613aae7c8b08ad15c54109cad7fa9a3
     settings:
       access_key:
@@ -18,13 +19,13 @@ steps:
       region: garage
       path_style: true
       archive_format: zstd
-      cache_key: "netzbremse-go-{{ checksum \"go.sum\" }}"
+      cache_key: "netzbremse-{{ checksum \"go.sum\" }}-{{ checksum \"package-lock.json\" }}"
       mount:
         - .go-mod-cache
-        - node_modules
+        - .npm-cache
 
   - name: go-test
-    image: golang:1.26.1-bookworm@sha256:c7a82e9e2df2fea5d8cb62a16aa6f796d2b2ed81ccad4ddd2bc9f0d22936c3f2
+    image: dhi.io/golang:1.26.1-debian13-dev
     environment:
       GOMODCACHE: /woodpecker/src/sm-moshi/netzbremse/.go-mod-cache
     commands:
@@ -42,6 +43,7 @@ steps:
       - event: push
         branch: main
     environment:
+      npm_config_cache: /woodpecker/src/sm-moshi/netzbremse/.npm-cache
       GITHUB_TOKEN:
         from_secret: github_token
       GH_TOKEN:
@@ -59,6 +61,7 @@ steps:
       - node node_modules/.bin/semantic-release
 
   - name: rebuild-cache
+    failure: ignore
     image: meltwater/drone-cache@sha256:f4429bda3e4f2af2cceb40deee10b8cc5613aae7c8b08ad15c54109cad7fa9a3
     settings:
       access_key:
@@ -72,7 +75,7 @@ steps:
       region: garage
       path_style: true
       archive_format: zstd
-      cache_key: "netzbremse-go-{{ checksum \"go.sum\" }}"
+      cache_key: "netzbremse-{{ checksum \"go.sum\" }}-{{ checksum \"package-lock.json\" }}"
       mount:
         - .go-mod-cache
-        - node_modules
+        - .npm-cache
