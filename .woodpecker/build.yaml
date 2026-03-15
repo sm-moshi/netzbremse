@@ -27,7 +27,7 @@ steps:
   - name: go-test
     image: dhi.io/golang:1.26.1-debian13-dev
     environment:
-      GOMODCACHE: /woodpecker/src/sm-moshi/netzbremse/.go-mod-cache
+      GOMODCACHE: /woodpecker/src/github.com/sm-moshi/netzbremse/.go-mod-cache
     commands:
       - mkdir -p .go-mod-cache
       - go test ./...
@@ -43,7 +43,7 @@ steps:
       - event: push
         branch: main
     environment:
-      npm_config_cache: /woodpecker/src/sm-moshi/netzbremse/.npm-cache
+      npm_config_cache: /woodpecker/src/github.com/sm-moshi/netzbremse/.npm-cache
       GITHUB_TOKEN:
         from_secret: github_token
       GH_TOKEN:
