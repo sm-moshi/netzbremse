@@ -28,6 +28,7 @@ steps:
     environment:
       GOMODCACHE: /woodpecker/src/sm-moshi/netzbremse/.go-mod-cache
     commands:
+      - mkdir -p .go-mod-cache
       - go test ./...
 
   - name: browser-script-check
