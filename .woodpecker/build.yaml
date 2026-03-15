@@ -5,7 +5,7 @@ when:
 
 steps:
   - name: restore-cache
-    image: meltwater/drone-cache
+    image: meltwater/drone-cache@sha256:f4429bda3e4f2af2cceb40deee10b8cc5613aae7c8b08ad15c54109cad7fa9a3
     settings:
       access_key:
         from_secret: garage_s3_access_key
@@ -58,7 +58,7 @@ steps:
       - node node_modules/.bin/semantic-release
 
   - name: rebuild-cache
-    image: meltwater/drone-cache
+    image: meltwater/drone-cache@sha256:f4429bda3e4f2af2cceb40deee10b8cc5613aae7c8b08ad15c54109cad7fa9a3
     settings:
       access_key:
         from_secret: garage_s3_access_key
