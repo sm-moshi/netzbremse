@@ -5,7 +5,7 @@ when:
 
 steps:
   - name: restore-cache
-    image: meltwater/drone-cache@sha256:f4429bda3e4f2af2cceb40deee10b8cc5613aae7c8b08ad15c54109cad7fa9a3
+    image: meltwater/drone-cache
     settings:
       access_key:
         from_secret: garage_s3_access_key
@@ -24,19 +24,19 @@ steps:
         - node_modules
 
   - name: go-test
-    image: golang:1.26.1-bookworm@sha256:c7a82e9e2df2fea5d8cb62a16aa6f796d2b2ed81ccad4ddd2bc9f0d22936c3f2
+    image: golang:1.26.1-bookworm
     environment:
       GOMODCACHE: /woodpecker/src/sm-moshi/netzbremse/.go-mod-cache
     commands:
       - go test ./...
 
   - name: browser-script-check
-    image: dhi.io/node:24.14.0-debian13-dev@sha256:59eccbcc0d930d6ce9fa45f02c074daa6a36e93054421bcfa7d6857b5c882593
+    image: dhi.io/node:24.14.0-debian13-dev
     commands:
       - node --check scripts/netzbremse-browser.mjs
 
   - name: release
-    image: dhi.io/node:24.14.0-debian13-dev@sha256:59eccbcc0d930d6ce9fa45f02c074daa6a36e93054421bcfa7d6857b5c882593
+    image: dhi.io/node:24.14.0-debian13-dev
     when:
       - event: push
         branch: main
@@ -58,7 +58,7 @@ steps:
       - node node_modules/.bin/semantic-release
 
   - name: rebuild-cache
-    image: meltwater/drone-cache@sha256:f4429bda3e4f2af2cceb40deee10b8cc5613aae7c8b08ad15c54109cad7fa9a3
+    image: meltwater/drone-cache
     settings:
       access_key:
         from_secret: garage_s3_access_key
