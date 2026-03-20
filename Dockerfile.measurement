@@ -25,7 +25,8 @@ LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
   org.opencontainers.image.title="netzbremse-measurement" \
   org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
 
-RUN apk upgrade --no-cache libexpat \
+ARG APK_CACHE_BUST=1
+RUN apk upgrade --no-cache \
   && apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 
 WORKDIR /app
