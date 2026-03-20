@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer";
 
 const url = process.env.NB_SPEEDTEST_URL || "https://netzbremse.de/speed";
 const acceptedPrivacyPolicy =
@@ -12,8 +12,11 @@ if (!acceptedPrivacyPolicy) {
 }
 
 const browser = await puppeteer.launch({
-  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium-browser",
+  ...(process.env.PUPPETEER_EXECUTABLE_PATH
+    ? { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH }
+    : {}),
   headless: true,
+  pipe: true,
   userDataDir: process.env.NB_SPEEDTEST_BROWSER_DATA_DIR || "/tmp/netzbremse-browser",
   args: [
     "--no-sandbox",
@@ -28,7 +31,9 @@ try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1100, height: 1200 });
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await page.waitForNetworkIdle();
+  await page.waitForSelector("nb-speedtest >>>> #nb_speedtest_start_btn", {
+    timeout: 60000,
+  });
 
   await page.evaluate(() => {
     window.nbSpeedtestOptions = { acceptedPolicy: true };

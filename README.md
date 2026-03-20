@@ -74,7 +74,7 @@ docker build -f Dockerfile.dashboard .
 Pushes to `main` run tests and `semantic-release`. Tags (`v*`) trigger the
 full release pipeline:
 
-1. Build multi-arch images (`linux/amd64`, `linux/arm64`)
+1. Build release images for `linux/amd64`
 2. Push to `ghcr.io/sm-moshi/netzbremse-{measurement,dashboard}`
 3. Trivy scan, Cosign sign, SPDX SBOM + vuln attestations
 4. Mirror to `harbor.m0sh1.cc/apps/` with Cosign + Notation signatures

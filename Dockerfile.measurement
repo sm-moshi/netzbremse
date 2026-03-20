@@ -15,19 +15,28 @@ FROM dhi.io/node:25.8.1-alpine3.23-dev@sha256:3382d412749838c33580ab83d16cdfce8e
 
 WORKDIR /app
 COPY package.json package-lock.json /app/
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 RUN npm ci --omit=dev --no-audit --no-fund \
   && npm cache clean --force
 
-FROM dhi.io/node:25.8.1-alpine3.23-dev@sha256:3382d412749838c33580ab83d16cdfce8e08641ae7c6a1dda08ac0a0ce4c0509
+# Use the Debian-based DHI runtime so we stay on the hardened image track while
+# avoiding Alpine's musl-compiled Chromium 146 renderer crash on the
+# netzbremse.de speed page.
+FROM dhi.io/node:25.8.1-debian13-dev@sha256:ad79d2ca3d7ef55909770f97641e594c8ad7a4f637ef2a17c3a2d1285cf3d4ae
 
 LABEL org.opencontainers.image.source="https://github.com/sm-moshi/netzbremse" \
   org.opencontainers.image.url="https://github.com/sm-moshi/netzbremse" \
   org.opencontainers.image.title="netzbremse-measurement" \
   org.opencontainers.image.description="Netzbremse measurement collector with browser-driven submission and PostgreSQL persistence"
 
-ARG APK_CACHE_BUST=1
-RUN apk upgrade --no-cache \
-  && apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+# Install Debian's glibc Chromium package. This keeps the runtime on DHI's
+# Debian base, avoids Alpine's renderer regression, and works on both amd64 and
+# arm64, unlike Chrome for Testing.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates chromium fonts-liberation \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=node-deps --chown=node:node /app/package.json /app/package-lock.json /app/
@@ -36,8 +45,9 @@ COPY --chown=node:node scripts/netzbremse-browser.mjs /app/netzbremse-browser.mj
 COPY --from=builder /out/netzbremse-measurement /usr/local/bin/netzbremse-measurement
 
 ENV HOME=/home/node \
-  PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+  PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
   PUPPETEER_SKIP_DOWNLOAD=true
+
 USER node
 
 EXPOSE 8081
