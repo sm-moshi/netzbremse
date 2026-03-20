@@ -37,10 +37,13 @@ try {
   const resultPromise = new Promise((resolve) => {
     page.exposeFunction("nbSpeedtestOnResult", (payload) => resolve(payload));
   });
-  await page.exposeFunction("nbSpeedtestOnFinished", () => {});
+  const finishedPromise = new Promise((resolve) => {
+    page.exposeFunction("nbSpeedtestOnFinished", () => resolve());
+  });
   await page.click("nb-speedtest >>>> #nb_speedtest_start_btn");
 
   const result = await resultPromise;
+  await finishedPromise;
   process.stdout.write(JSON.stringify(result));
 } finally {
   await browser.close();
