@@ -72,7 +72,7 @@ steps:
 
   # ── Trivy scan (parallel, each after its own build) ────────────────
   - name: trivy-scan-measurement
-    image: dhi.io/trivy:0.69.3-debian13-dev@sha256:27aa43fd3c3bed4e979569d4f95e26cb5297efafd0b390433051ff496d10e5cf
+    image: dhi.io/trivy:0.69.3-debian13-dev@sha256:05d156ed209f71500ed886b8e07b6ffb1e74025cf7fba287ab6869ab74bfd846
     depends_on:
       - build-and-push-measurement
     environment:
@@ -87,7 +87,7 @@ steps:
       - trivy image --format cosign-vuln --output measurement.vuln.json $${IMAGE_REF}
 
   - name: trivy-scan-dashboard
-    image: dhi.io/trivy:0.69.3-debian13-dev@sha256:27aa43fd3c3bed4e979569d4f95e26cb5297efafd0b390433051ff496d10e5cf
+    image: dhi.io/trivy:0.69.3-debian13-dev@sha256:05d156ed209f71500ed886b8e07b6ffb1e74025cf7fba287ab6869ab74bfd846
     depends_on:
       - build-and-push-dashboard
     environment:
@@ -103,7 +103,7 @@ steps:
 
   # ── SBOM generation (parallel, each after its own scan) ────────────
   - name: sbom-generate-measurement
-    image: dhi.io/syft:1.42.2-dev@sha256:bb414be38610bba7c6b3652dff76d715b6ccdee6aa7a392694c5d33d5f05bd75
+    image: dhi.io/syft:1.42.2-dev@sha256:f5428e6b146e78efe5c4c5ad1420134322c1818462d1914aa986c9b1daf253ce
     depends_on:
       - trivy-scan-measurement
     environment:
@@ -117,7 +117,7 @@ steps:
       - syft registry:$${IMAGE_REF} -o spdx-json > measurement.sbom.spdx.json
 
   - name: sbom-generate-dashboard
-    image: dhi.io/syft:1.42.2-dev@sha256:bb414be38610bba7c6b3652dff76d715b6ccdee6aa7a392694c5d33d5f05bd75
+    image: dhi.io/syft:1.42.2-dev@sha256:f5428e6b146e78efe5c4c5ad1420134322c1818462d1914aa986c9b1daf253ce
     depends_on:
       - trivy-scan-dashboard
     environment:
@@ -132,7 +132,7 @@ steps:
 
   # ── Cosign sign GHCR (parallel, each after its own SBOM) ──────────
   - name: cosign-sign-measurement-ghcr
-    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:4aaf9ee40f2b0aff8f7dadf020be9c75729e7212ad28585594f522d140d67aa0
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:354a108df89e95a67f25c25c68b8bbb9c71a6e22ddf575919879b01b88c46715
     depends_on:
       - sbom-generate-measurement
     environment:
@@ -155,7 +155,7 @@ steps:
       - rm -f /tmp/cosign.key
 
   - name: cosign-sign-dashboard-ghcr
-    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:4aaf9ee40f2b0aff8f7dadf020be9c75729e7212ad28585594f522d140d67aa0
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:354a108df89e95a67f25c25c68b8bbb9c71a6e22ddf575919879b01b88c46715
     depends_on:
       - sbom-generate-dashboard
     environment:
@@ -179,7 +179,7 @@ steps:
 
   # ── Mirror to Harbor (parallel, each after its own GHCR sign) ──────
   - name: mirror-measurement-to-harbor
-    image: dhi.io/crane:0.21.3-debian13-dev@sha256:4ca796a5a9579596730c753b6896284f8b6a6f42d1a6bb17d46a2e314fa22b83
+    image: dhi.io/crane:0.21.3-debian13-dev@sha256:3b385d26e12dfd0459626ca301ccbca20943a8c03950870a7f5bf0350bf14403
     depends_on:
       - cosign-sign-measurement-ghcr
     environment:
@@ -200,7 +200,7 @@ steps:
       - crane cp "$SRC_IMAGE" "harbor.m0sh1.cc/apps/netzbremse-measurement:latest"
 
   - name: mirror-dashboard-to-harbor
-    image: dhi.io/crane:0.21.3-debian13-dev@sha256:4ca796a5a9579596730c753b6896284f8b6a6f42d1a6bb17d46a2e314fa22b83
+    image: dhi.io/crane:0.21.3-debian13-dev@sha256:3b385d26e12dfd0459626ca301ccbca20943a8c03950870a7f5bf0350bf14403
     depends_on:
       - cosign-sign-dashboard-ghcr
     environment:
@@ -222,7 +222,7 @@ steps:
 
   # ── Cosign sign Harbor (parallel, each after its own mirror) ───────
   - name: cosign-sign-measurement-harbor
-    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:4aaf9ee40f2b0aff8f7dadf020be9c75729e7212ad28585594f522d140d67aa0
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:354a108df89e95a67f25c25c68b8bbb9c71a6e22ddf575919879b01b88c46715
     depends_on:
       - mirror-measurement-to-harbor
     environment:
@@ -245,7 +245,7 @@ steps:
       - rm -f /tmp/cosign.key measurement.sbom.spdx.json measurement.vuln.json
 
   - name: cosign-sign-dashboard-harbor
-    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:4aaf9ee40f2b0aff8f7dadf020be9c75729e7212ad28585594f522d140d67aa0
+    image: dhi.io/cosign:3.0.5-debian13-dev@sha256:354a108df89e95a67f25c25c68b8bbb9c71a6e22ddf575919879b01b88c46715
     depends_on:
       - mirror-dashboard-to-harbor
     environment:
