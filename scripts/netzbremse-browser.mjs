@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
 
 const url = process.env.NB_SPEEDTEST_URL || "https://netzbremse.de/speed";
 const acceptedPrivacyPolicy =
@@ -12,6 +12,7 @@ if (!acceptedPrivacyPolicy) {
 }
 
 const browser = await puppeteer.launch({
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium-browser",
   headless: true,
   userDataDir: process.env.NB_SPEEDTEST_BROWSER_DATA_DIR || "/tmp/netzbremse-browser",
   args: [
