@@ -78,7 +78,7 @@ func main() {
 		}
 		writeJSON(w, items)
 	})
-	mux.Handle("/", http.FileServer(http.FS(staticRoot)))
+	mux.Handle("/", securityHeaders(http.FileServer(http.FS(staticRoot))))
 
 	server := &http.Server{
 		Addr:              dashboardConfig.ListenAddress,
@@ -97,6 +97,16 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	_ = server.Shutdown(shutdownCtx)
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
