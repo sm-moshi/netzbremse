@@ -4,7 +4,7 @@
     "config:best-practices",
     ":preserveSemverRanges"
   ],
-  "platformAutomerge": false,
+  "platformAutomerge": true,
   "dependencyDashboard": true,
   "dependencyDashboardApproval": true,
   "dependencyDashboardAutoclose": true,
@@ -30,14 +30,14 @@
     {
       "description": "DHI image versioning: variant-locked via compatibility group",
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["/^dhi\\.io\\//"],
-      "versioning": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(-(?<compatibility>.+))?$"
+      "matchPackageNames": ["/^dhi\.io\//"],
+      "versioning": "regex:^(?<major>\d+)(\.(?<minor>\d+))?(\.(?<patch>\d+))?(-(?<compatibility>.+))?$"
     },
     {
       "description": "Node.js: only track even-numbered (LTS) majors",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["dhi.io/node"],
-      "allowedVersions": "/^\\d*[02468]\\./"
+      "allowedVersions": "/^\d*[02468]\./"
     },
     {
       "matchManagers": ["gomod"],
@@ -58,7 +58,7 @@
     {
       "description": "Group DHI base images across Dockerfiles and Woodpecker pipelines",
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["/^dhi\\.io\\//"],
+      "matchPackageNames": ["/^dhi\.io\//"],
       "groupName": "dhi base images"
     },
     {
@@ -70,6 +70,22 @@
       "description": "Group all GitHub Actions into a single PR",
       "matchManagers": ["github-actions"],
       "groupName": "github actions"
+    },
+    {
+      "description": "Auto-merge patch and minor Go module updates — CI-verified",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge Woodpecker image updates",
+      "matchManagers": ["woodpecker"],
+      "automerge": true
     }
   ]
 }
