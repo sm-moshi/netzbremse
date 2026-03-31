@@ -15,14 +15,14 @@ func TestMeasurementJSONRoundTrip(t *testing.T) {
 		SessionID:         "sess-abc-123",
 		Endpoint:          "https://netzbremse.de/speed",
 		Success:           true,
-		DownloadBPS:       50_000_000,
-		UploadBPS:         10_000_000,
-		LatencyMS:         12.5,
-		JitterMS:          3.2,
-		DownloadLatencyMS: 15.0,
-		DownloadJitterMS:  4.0,
-		UploadLatencyMS:   18.0,
-		UploadJitterMS:    5.0,
+		DownloadBPS:       Float64Ptr(50_000_000),
+		UploadBPS:         Float64Ptr(10_000_000),
+		LatencyMS:         Float64Ptr(12.5),
+		JitterMS:          Float64Ptr(3.2),
+		DownloadLatencyMS: Float64Ptr(15.0),
+		DownloadJitterMS:  Float64Ptr(4.0),
+		UploadLatencyMS:   Float64Ptr(18.0),
+		UploadJitterMS:    Float64Ptr(5.0),
 		RawJSON:           json.RawMessage(`{"extra":"data"}`),
 	}
 
@@ -51,30 +51,14 @@ func TestMeasurementJSONRoundTrip(t *testing.T) {
 	if decoded.Success != original.Success {
 		t.Errorf("Success: got %v, want %v", decoded.Success, original.Success)
 	}
-	if decoded.DownloadBPS != original.DownloadBPS {
-		t.Errorf("DownloadBPS: got %f, want %f", decoded.DownloadBPS, original.DownloadBPS)
-	}
-	if decoded.UploadBPS != original.UploadBPS {
-		t.Errorf("UploadBPS: got %f, want %f", decoded.UploadBPS, original.UploadBPS)
-	}
-	if decoded.LatencyMS != original.LatencyMS {
-		t.Errorf("LatencyMS: got %f, want %f", decoded.LatencyMS, original.LatencyMS)
-	}
-	if decoded.JitterMS != original.JitterMS {
-		t.Errorf("JitterMS: got %f, want %f", decoded.JitterMS, original.JitterMS)
-	}
-	if decoded.DownloadLatencyMS != original.DownloadLatencyMS {
-		t.Errorf("DownloadLatencyMS: got %f, want %f", decoded.DownloadLatencyMS, original.DownloadLatencyMS)
-	}
-	if decoded.DownloadJitterMS != original.DownloadJitterMS {
-		t.Errorf("DownloadJitterMS: got %f, want %f", decoded.DownloadJitterMS, original.DownloadJitterMS)
-	}
-	if decoded.UploadLatencyMS != original.UploadLatencyMS {
-		t.Errorf("UploadLatencyMS: got %f, want %f", decoded.UploadLatencyMS, original.UploadLatencyMS)
-	}
-	if decoded.UploadJitterMS != original.UploadJitterMS {
-		t.Errorf("UploadJitterMS: got %f, want %f", decoded.UploadJitterMS, original.UploadJitterMS)
-	}
+	assertFloat64PtrEqual(t, "DownloadBPS", decoded.DownloadBPS, original.DownloadBPS)
+	assertFloat64PtrEqual(t, "UploadBPS", decoded.UploadBPS, original.UploadBPS)
+	assertFloat64PtrEqual(t, "LatencyMS", decoded.LatencyMS, original.LatencyMS)
+	assertFloat64PtrEqual(t, "JitterMS", decoded.JitterMS, original.JitterMS)
+	assertFloat64PtrEqual(t, "DownloadLatencyMS", decoded.DownloadLatencyMS, original.DownloadLatencyMS)
+	assertFloat64PtrEqual(t, "DownloadJitterMS", decoded.DownloadJitterMS, original.DownloadJitterMS)
+	assertFloat64PtrEqual(t, "UploadLatencyMS", decoded.UploadLatencyMS, original.UploadLatencyMS)
+	assertFloat64PtrEqual(t, "UploadJitterMS", decoded.UploadJitterMS, original.UploadJitterMS)
 	if string(decoded.RawJSON) != string(original.RawJSON) {
 		t.Errorf("RawJSON: got %s, want %s", decoded.RawJSON, original.RawJSON)
 	}
@@ -89,14 +73,14 @@ func TestMeasurementJSONFieldNames(t *testing.T) {
 		SessionID:         "s1",
 		Endpoint:          "ep",
 		Success:           true,
-		DownloadBPS:       100,
-		UploadBPS:         50,
-		LatencyMS:         10,
-		JitterMS:          2,
-		DownloadLatencyMS: 11,
-		DownloadJitterMS:  3,
-		UploadLatencyMS:   12,
-		UploadJitterMS:    4,
+		DownloadBPS:       Float64Ptr(100),
+		UploadBPS:         Float64Ptr(50),
+		LatencyMS:         Float64Ptr(10),
+		JitterMS:          Float64Ptr(2),
+		DownloadLatencyMS: Float64Ptr(11),
+		DownloadJitterMS:  Float64Ptr(3),
+		UploadLatencyMS:   Float64Ptr(12),
+		UploadJitterMS:    Float64Ptr(4),
 		RawJSON:           json.RawMessage(`{}`),
 	}
 
@@ -149,18 +133,53 @@ func TestMeasurementZeroValue(t *testing.T) {
 	if decoded.Success {
 		t.Error("Success: got true, want false")
 	}
-	if decoded.DownloadBPS != 0 {
-		t.Errorf("DownloadBPS: got %f, want 0", decoded.DownloadBPS)
+	if decoded.DownloadBPS != nil {
+		t.Errorf("DownloadBPS: got %v, want nil", decoded.DownloadBPS)
 	}
 	if decoded.SessionID != "" {
 		t.Errorf("SessionID: got %q, want empty", decoded.SessionID)
 	}
 }
 
+func TestMeasurementNullMetrics(t *testing.T) {
+	t.Parallel()
+
+	raw := `{
+		"id": 1,
+		"measuredAt": "2026-01-01T00:00:00Z",
+		"sessionId": "s1",
+		"endpoint": "ep",
+		"success": false,
+		"downloadBPS": null,
+		"uploadBPS": null,
+		"latencyMS": null,
+		"jitterMS": null,
+		"downloadLatencyMS": null,
+		"downloadJitterMS": null,
+		"uploadLatencyMS": null,
+		"uploadJitterMS": null,
+		"raw": {}
+	}`
+
+	var m Measurement
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if m.DownloadBPS != nil {
+		t.Errorf("DownloadBPS: got %v, want nil", m.DownloadBPS)
+	}
+	if m.UploadBPS != nil {
+		t.Errorf("UploadBPS: got %v, want nil", m.UploadBPS)
+	}
+	if m.Success {
+		t.Error("Success: got true, want false")
+	}
+}
+
 func TestMeasurementUnmarshalFromExternalJSON(t *testing.T) {
 	t.Parallel()
 
-	// Simulate the kind of JSON the dashboard API might return.
 	raw := `{
 		"id": 99,
 		"measuredAt": "2026-03-15T08:00:00Z",
@@ -189,14 +208,12 @@ func TestMeasurementUnmarshalFromExternalJSON(t *testing.T) {
 	if m.SessionID != "ext-session" {
 		t.Errorf("SessionID: got %q, want %q", m.SessionID, "ext-session")
 	}
-	if m.DownloadBPS != 75000000.5 {
-		t.Errorf("DownloadBPS: got %f, want 75000000.5", m.DownloadBPS)
+	if m.DownloadBPS == nil || *m.DownloadBPS != 75000000.5 {
+		t.Errorf("DownloadBPS: got %v, want 75000000.5", m.DownloadBPS)
 	}
 	if !m.Success {
 		t.Error("Success: got false, want true")
 	}
-
-	// RawJSON should preserve the nested object.
 	if !json.Valid(m.RawJSON) {
 		t.Errorf("RawJSON is not valid JSON: %s", m.RawJSON)
 	}
@@ -211,14 +228,14 @@ func TestMeasurementNullRawJSON(t *testing.T) {
 		"sessionId": "",
 		"endpoint": "",
 		"success": false,
-		"downloadBPS": 0,
-		"uploadBPS": 0,
-		"latencyMS": 0,
-		"jitterMS": 0,
-		"downloadLatencyMS": 0,
-		"downloadJitterMS": 0,
-		"uploadLatencyMS": 0,
-		"uploadJitterMS": 0,
+		"downloadBPS": null,
+		"uploadBPS": null,
+		"latencyMS": null,
+		"jitterMS": null,
+		"downloadLatencyMS": null,
+		"downloadJitterMS": null,
+		"uploadLatencyMS": null,
+		"uploadJitterMS": null,
 		"raw": null
 	}`
 
@@ -229,5 +246,19 @@ func TestMeasurementNullRawJSON(t *testing.T) {
 
 	if m.RawJSON != nil && string(m.RawJSON) != "null" {
 		t.Errorf("RawJSON: got %s, want nil or null", m.RawJSON)
+	}
+}
+
+func assertFloat64PtrEqual(t *testing.T, name string, got, want *float64) {
+	t.Helper()
+	if got == nil && want == nil {
+		return
+	}
+	if got == nil || want == nil {
+		t.Errorf("%s: got %v, want %v", name, got, want)
+		return
+	}
+	if *got != *want {
+		t.Errorf("%s: got %f, want %f", name, *got, *want)
 	}
 }

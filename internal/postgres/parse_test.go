@@ -62,9 +62,9 @@ func TestParseMeasurementPayload(t *testing.T) {
 		fallbackMeasuredAt time.Time
 		fallbackEndpoint   string
 		wantSuccess        bool
-		wantDownload       float64
-		wantUpload         float64
-		wantLatency        float64
+		wantDownload       *float64
+		wantUpload         *float64
+		wantLatency        *float64
 		wantSessionID      string
 		wantEndpoint       string
 		wantErr            bool
@@ -88,14 +88,14 @@ func TestParseMeasurementPayload(t *testing.T) {
 				}
 			}`,
 			wantSuccess:   true,
-			wantDownload:  50000000,
-			wantUpload:    10000000,
-			wantLatency:   12.5,
+			wantDownload:  float64Ptr(50000000),
+			wantUpload:    float64Ptr(10000000),
+			wantLatency:   float64Ptr(12.5),
 			wantSessionID: "abc-123",
 			wantEndpoint:  "https://netzbremse.de/speed",
 		},
 		{
-			name: "failed measurement",
+			name: "failed measurement has nil metrics",
 			payload: `{
 				"sessionID": "def-456",
 				"endpoint": "https://netzbremse.de/speed",
@@ -108,9 +108,9 @@ func TestParseMeasurementPayload(t *testing.T) {
 				}
 			}`,
 			wantSuccess:   false,
-			wantDownload:  0,
-			wantUpload:    0,
-			wantLatency:   0,
+			wantDownload:  nil,
+			wantUpload:    nil,
+			wantLatency:   nil,
 			wantSessionID: "def-456",
 			wantEndpoint:  "https://netzbremse.de/speed",
 		},
@@ -122,9 +122,9 @@ func TestParseMeasurementPayload(t *testing.T) {
 			}`,
 			fallbackEndpoint: "https://fallback.example.com",
 			wantSuccess:      true,
-			wantDownload:     1000,
-			wantUpload:       500,
-			wantLatency:      10,
+			wantDownload:     float64Ptr(1000),
+			wantUpload:       float64Ptr(500),
+			wantLatency:      float64Ptr(10),
 			wantEndpoint:     "https://fallback.example.com",
 		},
 		{
@@ -135,9 +135,9 @@ func TestParseMeasurementPayload(t *testing.T) {
 			}`,
 			fallbackMeasuredAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 			wantSuccess:        true,
-			wantDownload:       1000,
-			wantUpload:         500,
-			wantLatency:        10,
+			wantDownload:       float64Ptr(1000),
+			wantUpload:         float64Ptr(500),
+			wantLatency:        float64Ptr(10),
 		},
 		{
 			name:    "invalid json",
@@ -170,15 +170,9 @@ func TestParseMeasurementPayload(t *testing.T) {
 			if got.Success != tt.wantSuccess {
 				t.Errorf("Success = %v, want %v", got.Success, tt.wantSuccess)
 			}
-			if !floatEqual(got.DownloadBPS, tt.wantDownload) {
-				t.Errorf("DownloadBPS = %v, want %v", got.DownloadBPS, tt.wantDownload)
-			}
-			if !floatEqual(got.UploadBPS, tt.wantUpload) {
-				t.Errorf("UploadBPS = %v, want %v", got.UploadBPS, tt.wantUpload)
-			}
-			if !floatEqual(got.LatencyMS, tt.wantLatency) {
-				t.Errorf("LatencyMS = %v, want %v", got.LatencyMS, tt.wantLatency)
-			}
+			assertFloat64Ptr(t, "DownloadBPS", got.DownloadBPS, tt.wantDownload)
+			assertFloat64Ptr(t, "UploadBPS", got.UploadBPS, tt.wantUpload)
+			assertFloat64Ptr(t, "LatencyMS", got.LatencyMS, tt.wantLatency)
 			if tt.wantSessionID != "" && got.SessionID != tt.wantSessionID {
 				t.Errorf("SessionID = %q, want %q", got.SessionID, tt.wantSessionID)
 			}
@@ -188,13 +182,22 @@ func TestParseMeasurementPayload(t *testing.T) {
 			if !json.Valid(got.RawJSON) {
 				t.Errorf("RawJSON is not valid JSON: %s", got.RawJSON)
 			}
-			if !tt.fallbackMeasuredAt.IsZero() && got.MeasuredAt.Equal(tt.fallbackMeasuredAt) {
-				// Fallback was used — expected.
-			}
 		})
 	}
 }
 
-func floatEqual(a, b float64) bool {
-	return math.Abs(a-b) < 1e-9
+func float64Ptr(v float64) *float64 { return &v }
+
+func assertFloat64Ptr(t *testing.T, name string, got, want *float64) {
+	t.Helper()
+	if got == nil && want == nil {
+		return
+	}
+	if got == nil || want == nil {
+		t.Errorf("%s: got %v, want %v", name, got, want)
+		return
+	}
+	if math.Abs(*got-*want) > 1e-9 {
+		t.Errorf("%s: got %f, want %f", name, *got, *want)
+	}
 }

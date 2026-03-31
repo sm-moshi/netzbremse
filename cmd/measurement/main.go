@@ -14,6 +14,13 @@ import (
 	"github.com/sm-moshi/netzbremse/internal/postgres"
 )
 
+func deref(v *float64) float64 {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -60,9 +67,9 @@ func main() {
 			reason,
 			item.Endpoint,
 			item.Success,
-			item.DownloadBPS,
-			item.UploadBPS,
-			item.LatencyMS,
+			deref(item.DownloadBPS),
+			deref(item.UploadBPS),
+			deref(item.LatencyMS),
 		)
 	}
 

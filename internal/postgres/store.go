@@ -69,6 +69,7 @@ func (s *Store) EnsureSchema(ctx context.Context) error {
 	if _, err := s.pool.Exec(ctx, schemaSQL); err != nil {
 		return fmt.Errorf("apply schema: %w", err)
 	}
+	// Legacy migration: session_id uuid → text.
 	if _, err := s.pool.Exec(ctx, `
 		do $$
 		begin
@@ -88,6 +89,62 @@ func (s *Store) EnsureSchema(ctx context.Context) error {
 		$$;
 	`); err != nil {
 		return fmt.Errorf("migrate session_id column: %w", err)
+	}
+	// Migration 002: nullable metrics, session_id NOT NULL.
+	if _, err := s.pool.Exec(ctx, `
+		do $$
+		begin
+			-- Only run if metrics still have defaults (idempotent guard).
+			if exists (
+				select 1
+				from information_schema.columns
+				where table_schema = 'public'
+					and table_name = 'measurements'
+					and column_name = 'download_bps'
+					and column_default is not null
+			) then
+				alter table measurements alter column download_bps drop default;
+				alter table measurements alter column upload_bps drop default;
+				alter table measurements alter column latency_ms drop default;
+				alter table measurements alter column jitter_ms drop default;
+				alter table measurements alter column download_latency_ms drop default;
+				alter table measurements alter column download_jitter_ms drop default;
+				alter table measurements alter column upload_latency_ms drop default;
+				alter table measurements alter column upload_jitter_ms drop default;
+
+				alter table measurements alter column download_bps drop not null;
+				alter table measurements alter column upload_bps drop not null;
+				alter table measurements alter column latency_ms drop not null;
+				alter table measurements alter column jitter_ms drop not null;
+				alter table measurements alter column download_latency_ms drop not null;
+				alter table measurements alter column download_jitter_ms drop not null;
+				alter table measurements alter column upload_latency_ms drop not null;
+				alter table measurements alter column upload_jitter_ms drop not null;
+
+				update measurements
+				set download_bps = null, upload_bps = null,
+				    latency_ms = null, jitter_ms = null,
+				    download_latency_ms = null, download_jitter_ms = null,
+				    upload_latency_ms = null, upload_jitter_ms = null
+				where success = false and download_bps = 0 and upload_bps = 0;
+			end if;
+
+			-- Make session_id NOT NULL if it isn't already.
+			if exists (
+				select 1
+				from information_schema.columns
+				where table_schema = 'public'
+					and table_name = 'measurements'
+					and column_name = 'session_id'
+					and is_nullable = 'YES'
+			) then
+				update measurements set session_id = '' where session_id is null;
+				alter table measurements alter column session_id set not null;
+			end if;
+		end
+		$$;
+	`); err != nil {
+		return fmt.Errorf("migrate nullable metrics: %w", err)
 	}
 	return nil
 }
@@ -109,7 +166,7 @@ func (s *Store) Insert(ctx context.Context, measurement model.Measurement) error
 			upload_jitter_ms,
 			raw
 		) values (
-			$1, nullif($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb
 		)
 		on conflict do nothing
 	`,
@@ -138,7 +195,7 @@ func (s *Store) ListLatest(ctx context.Context, limit int) ([]model.Measurement,
 		select
 			id,
 			measured_at,
-			coalesce(session_id, ''),
+			session_id,
 			endpoint,
 			success,
 			download_bps,
@@ -290,21 +347,26 @@ func ParseMeasurementPayload(payload []byte, fallbackMeasuredAt time.Time, fallb
 		endpoint = fallbackEndpoint
 	}
 
-	return model.Measurement{
-		MeasuredAt:        measuredAt,
-		SessionID:         doc.SessionID,
-		Endpoint:          endpoint,
-		Success:           doc.Success,
-		DownloadBPS:       doc.Result.Download,
-		UploadBPS:         doc.Result.Upload,
-		LatencyMS:         doc.Result.Latency,
-		JitterMS:          doc.Result.Jitter,
-		DownloadLatencyMS: doc.Result.DownloadLatency,
-		DownloadJitterMS:  doc.Result.DownloadJitter,
-		UploadLatencyMS:   doc.Result.UploadLatency,
-		UploadJitterMS:    doc.Result.UploadJitter,
-		RawJSON:           payload,
-	}, nil
+	m := model.Measurement{
+		MeasuredAt: measuredAt,
+		SessionID:  doc.SessionID,
+		Endpoint:   endpoint,
+		Success:    doc.Success,
+		RawJSON:    payload,
+	}
+	if doc.Success {
+		m.DownloadBPS = model.Float64Ptr(doc.Result.Download)
+		m.UploadBPS = model.Float64Ptr(doc.Result.Upload)
+		m.LatencyMS = model.Float64Ptr(doc.Result.Latency)
+		m.JitterMS = model.Float64Ptr(doc.Result.Jitter)
+		m.DownloadLatencyMS = model.Float64Ptr(doc.Result.DownloadLatency)
+		m.DownloadJitterMS = model.Float64Ptr(doc.Result.DownloadJitter)
+		m.UploadLatencyMS = model.Float64Ptr(doc.Result.UploadLatency)
+		m.UploadJitterMS = model.Float64Ptr(doc.Result.UploadJitter)
+	}
+	// When !doc.Success, metric pointers remain nil → stored as NULL.
+
+	return m, nil
 }
 
 func ParseMeasurementFile(path string, payload []byte, fallbackEndpoint string) (model.Measurement, error) {

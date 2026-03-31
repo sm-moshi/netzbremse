@@ -54,14 +54,14 @@ func TestRunSuccessfulCommand(t *testing.T) {
 	if !m.Success {
 		t.Error("Success = false, want true")
 	}
-	if m.DownloadBPS != 50_000_000 {
-		t.Errorf("DownloadBPS = %f, want 50000000", m.DownloadBPS)
+	if m.DownloadBPS == nil || *m.DownloadBPS != 50_000_000 {
+		t.Errorf("DownloadBPS = %v, want 50000000", m.DownloadBPS)
 	}
-	if m.UploadBPS != 10_000_000 {
-		t.Errorf("UploadBPS = %f, want 10000000", m.UploadBPS)
+	if m.UploadBPS == nil || *m.UploadBPS != 10_000_000 {
+		t.Errorf("UploadBPS = %v, want 10000000", m.UploadBPS)
 	}
-	if m.LatencyMS != 12.5 {
-		t.Errorf("LatencyMS = %f, want 12.5", m.LatencyMS)
+	if m.LatencyMS == nil || *m.LatencyMS != 12.5 {
+		t.Errorf("LatencyMS = %v, want 12.5", m.LatencyMS)
 	}
 }
 
