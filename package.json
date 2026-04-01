@@ -16,6 +16,6 @@
     "puppeteer": "24.40.0"
   },
   "overrides": {
-    "yauzl": "3.2.1"
+    "yauzl": "3.3.0"
   }
 }
