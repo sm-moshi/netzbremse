@@ -72,7 +72,7 @@ steps:
 
   # ── Trivy scan (parallel, each after its own build) ────────────────
   - name: trivy-scan-measurement
-    image: dhi.io/trivy:0.69.3-alpine3.23-dev@sha256:b7080d272848134e21d385ace2c6f38a230d51107466c777dbd14d2b64c0d919
+    image: dhi.io/trivy:0.69.3-alpine3.23-dev@sha256:c5f14bcfd0e4a4aafc685c954e38e507d60881ec8f02b69e351221c7a1aa5dd3
     depends_on:
       - build-and-push-measurement
     environment:
@@ -87,7 +87,7 @@ steps:
       - trivy image --format cosign-vuln --output measurement.vuln.json $${IMAGE_REF}
 
   - name: trivy-scan-dashboard
-    image: dhi.io/trivy:0.69.3-alpine3.23-dev@sha256:b7080d272848134e21d385ace2c6f38a230d51107466c777dbd14d2b64c0d919
+    image: dhi.io/trivy:0.69.3-alpine3.23-dev@sha256:c5f14bcfd0e4a4aafc685c954e38e507d60881ec8f02b69e351221c7a1aa5dd3
     depends_on:
       - build-and-push-dashboard
     environment:
@@ -103,7 +103,7 @@ steps:
 
   # ── SBOM generation (parallel, each after its own scan) ────────────
   - name: sbom-generate-measurement
-    image: dhi.io/syft:1.42.3-alpine3.23-dev@sha256:4eab5015cabe1d673002872f37f7195957e3f1197bb2d611f993ac56a542c59d
+    image: dhi.io/syft:1.42.4-alpine3.23-dev@sha256:ccaddd9721eb1ac16efcb73dc3ab6c94fbd2cc4f365aa0149e5312ccde2017b2
     depends_on:
       - trivy-scan-measurement
     environment:
@@ -117,7 +117,7 @@ steps:
       - syft registry:$${IMAGE_REF} -o spdx-json > measurement.sbom.spdx.json
 
   - name: sbom-generate-dashboard
-    image: dhi.io/syft:1.42.3-alpine3.23-dev@sha256:4eab5015cabe1d673002872f37f7195957e3f1197bb2d611f993ac56a542c59d
+    image: dhi.io/syft:1.42.4-alpine3.23-dev@sha256:ccaddd9721eb1ac16efcb73dc3ab6c94fbd2cc4f365aa0149e5312ccde2017b2
     depends_on:
       - trivy-scan-dashboard
     environment:
