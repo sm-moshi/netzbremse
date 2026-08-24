@@ -1,4 +1,4 @@
-FROM dhi.io/golang:1.27.0-alpine3.24-dev@sha256:76defbbd7307f0b09f0264c30d2e926981debf1d767ef0d93186b6c58dad539a AS builder
+FROM dhi.io/golang:1.27.0-alpine3.24-dev@sha256:af973fb9b6ae481be6d36b582bc72ea2df5d4bb70109b6be89cad433113f82e0 AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
@@ -12,7 +12,7 @@ COPY cmd/measurement ./cmd/measurement
 COPY internal ./internal
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/netzbremse-measurement ./cmd/measurement
 
-FROM dhi.io/node:26.7.0-alpine3.24-dev@sha256:763d0f58436281ce84f6f95b8a7a318f74cd8c9d1cef61212efeffe2de445130 AS node-deps
+FROM dhi.io/node:26.7.0-alpine3.24-dev@sha256:250af2ad8b693ed9b2dcfeca75f0d4a2986be34fa400b5a58f533d3f03b838a7 AS node-deps
 
 WORKDIR /app
 COPY package.json package-lock.json /app/
